@@ -432,17 +432,24 @@ reason: both were wrong in the direction of "everything is fine".
 
 #### The 100 test lines at 00:21 and 00:27 are not events
 
-They are output from my own dry runs during guard development, tagged
-`wifi-guard` because `say()` used to `logger` in dry-run mode too. **Do not read
-them as a real event.** The genuine lines in that boot are only:
+Almost every line in that boot is from guard development, not from Tom. Tagged
+`wifi-guard` because `say()` used to `logger` in dry-run mode too. Full
+classification of the boot:
 
-- `23:55:12` wlan0 has no IPv4 / wifi dead — the deliberate disconnect test
-- `23:55:37` recovered by restarting the wifi profile
-- `23:56:42` check: wifi is working again; not rebooting
+| window | what it was |
+| --- | --- |
+| 22:52:01 / 22:52:22 | **genuinely spontaneous** — the *old deployed* guard reconnecting a dropped wlan0, before the rewrite |
+| 23:17, 23:19, 23:21 | deliberate tests I ran: disconnect recovery, module-skip, deferred check |
+| 23:53 | deliberate real-mode taxonomy tests (`RECOVERY=none` then went to the defer path) |
+| 23:55:12 / 23:55:37 / 23:56:42 | deliberate installed-copy disconnect test and its deferred check |
+| 00:21, 00:27 | **dry runs** — should not have been journalled at all |
+| 00:54:08 | the real-mode test proving the `say()` fix still logs |
+| everything else | the 2-minute cron, which is silent while healthy |
 
-They are not scrubbed (that would be rewriting history for cosmetics); they are
-labelled here instead. The ambiguity is fixed at the source: `say()` now logs only
-when `DRY=0`, so a dry run writes nothing to the journal.
+**Do not read any of these as a fault**, and in particular do not read `00:21` or
+`00:27` as an event. They are not scrubbed (rewriting history for cosmetics is
+worse than labelling it); they are labelled here instead. The ambiguity is fixed
+at the source: `say()` now logs only when `DRY=0`, so a dry run writes nothing.
 
 **Telling them apart if you are reading an old batch:** a dry run always emits at
 least one `PLAN:` line and never a final outcome; a real run emits an outcome
