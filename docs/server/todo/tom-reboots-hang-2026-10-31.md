@@ -400,9 +400,55 @@ guard cron run that is **not silent**. A healthy run prints nothing; a line in
 `journalctl -t wifi-guard` means the guard decided something, which is news worth
 reporting rather than filing.
 
+Read the guard log like this — **never with a bare time**:
+
+```bash copy Copy guard log window
+journalctl -t wifi-guard --since "-1 hour" --no-pager
+```
+
 Stated here because the recurring check prompt does not ask for either, and a
 silent divergence is exactly the failure the hand-sync warning describes: the repo
 and the running guard would drift with nothing to flag it.
+
+#### When this check reported a false clean, and why
+
+At the 2026-11-01 00:49 check the guard was reported as **"0 lines since 23:57"**.
+It was false: there were **100** wifi-guard lines in that boot. The command used a
+bare time, `--since "23:57"`, which journalctl resolves against **today** — by
+then 1 November — so it filtered from a moment in the future and matched nothing.
+Measured on the same log:
+
+| command | lines |
+| --- | --- |
+| `--since "23:57"` | **0** (false clean) |
+| `--since "2026-10-31 23:57"` | 25 |
+| `--since "-1 hour"` | 55 |
+
+A check that reads clean across midnight is the worst failure mode available: it
+does not fail, it reports success. Hence the rule above — a relative window or an
+explicitly dated timestamp, never a bare clock time. This is the **second** silent
+check bug in this ticket, and it belongs next to the header check for the same
+reason: both were wrong in the direction of "everything is fine".
+
+#### The 100 test lines at 00:21 and 00:27 are not events
+
+They are output from my own dry runs during guard development, tagged
+`wifi-guard` because `say()` used to `logger` in dry-run mode too. **Do not read
+them as a real event.** The genuine lines in that boot are only:
+
+- `23:55:12` wlan0 has no IPv4 / wifi dead — the deliberate disconnect test
+- `23:55:37` recovered by restarting the wifi profile
+- `23:56:42` check: wifi is working again; not rebooting
+
+They are not scrubbed (that would be rewriting history for cosmetics); they are
+labelled here instead. The ambiguity is fixed at the source: `say()` now logs only
+when `DRY=0`, so a dry run writes nothing to the journal.
+
+**Telling them apart if you are reading an old batch:** a dry run always emits at
+least one `PLAN:` line and never a final outcome; a real run emits an outcome
+(`recovered by …`, `check: …`, `rebooting`) and never `PLAN:`. That holds for the
+historical noise above. The time window cannot separate them — at 00:49 the test
+lines were inside the last hour — so the discriminator is content, not time.
 
 **First thing it found, within an hour of being pinned:** the two `@reboot`
 samplers had genuinely diverged — `tom-kmsg.sh` and `tom-trace.sh` were fixed in

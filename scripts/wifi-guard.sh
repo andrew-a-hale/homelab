@@ -90,8 +90,15 @@ done
 
 FAKE=${WIFI_GUARD_FAKE:-}
 
-say() {  # dry-run-visible log line
-  if [ "$DRY" = 1 ]; then printf 'DRY: %s\n' "$*"; fi
+# A dry run must NOT write a real-tagged journal line. Test output is
+# indistinguishable from a genuine event once it is tagged wifi-guard, and after
+# the cable comes out the guard log is the only witness to a link fault, so
+# polluting it with test noise can mask the one line that matters.
+say() {
+  if [ "$DRY" = 1 ]; then
+    printf 'DRY: %s\n' "$*"
+    return 0
+  fi
   logger -t wifi-guard "$*"
 }
 
