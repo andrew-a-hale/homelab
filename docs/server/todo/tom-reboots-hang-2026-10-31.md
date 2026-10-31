@@ -369,7 +369,8 @@ wired-free night.
 | state=1 + unroutable gateway | reached 2/2 → recovering |
 | `check` + forced dead + eth0 up | "another uplink is up; not rebooting" |
 | **real disconnect** | `nmcli device disconnect wlan0` at 23:17:23 left wlan0 up with **no IPv4**; the new guard ran at 23:17:25, logged the profile restart, and at 23:17:48 wlan0 was back on 192.168.1.24 with `ping -I wlan0` OK |
-| tier-2 skip (forced dead, eth0 up, `RECOVERY=module`) | logged "skipping the disruptive brcmfmac reload"; NetworkManager and iwd stayed **active** and wlan0 was untouched |
+| tier-2 skip (forced dead, eth0 up) | logged "skipping the disruptive brcmfmac reload"; NetworkManager and iwd stayed **active** and wlan0 was untouched. (Run while the `WIFI_GUARD_RECOVERY` knob still existed — that knob is now gone, so this is history, not a usable invocation.) |
+| dry run writes nothing | forced-fault dry run: 6 lines to stdout, journal delta **0**; real run with the same fault: journal delta **3** |
 | deferred check | fired 23:21:50: "check: wifi is working again; not rebooting"; `boot_id` unchanged |
 | **taxonomy: gateway up, off-LAN unroutable** | logged "treating as an upstream fault, not acting"; no recovery, no plan |
 | **taxonomy: gateway unroutable, off-LAN up** | logged "wifi works, not acting" |
@@ -399,6 +400,13 @@ scheduled check must confirm `md5sum` of
 guard cron run that is **not silent**. A healthy run prints nothing; a line in
 `journalctl -t wifi-guard` means the guard decided something, which is news worth
 reporting rather than filing.
+
+**Report the window and the classification, not just a count.** A bare number is
+how the false clean happened: "0 lines since 23:57" was true of a command that
+filtered from the future. Every guard-log statement should name the window it was
+read over (relative or explicitly dated) and say what the lines were — cron
+silence, a real event, or labelled test output. If a window contains test noise,
+say so rather than reporting the total.
 
 Read the guard log like this — **never with a bare time**:
 
