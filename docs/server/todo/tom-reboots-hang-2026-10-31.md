@@ -656,6 +656,64 @@ recorded in `/tmp/tom-watch.pid`. **Stop it by that PID**, never by pattern — 
 same trap that killed two shells in one night. If the pidfile is missing, read the
 PID from `ps -eo pid,ppid,args | grep tom-watch | grep -v "bash -c"`.
 
+### First read after the next reset — in this order
+
+Written down now so nobody has to work it out while Tom is down and the clock is
+running.
+
+**1. `/var/log/tom-kmsg.log` — primary evidence.** Microsecond timestamps, and the
+per-boot header tells you which section is the dying boot:
+
+```bash copy Copy first read after a reset
+sudo grep -an "===== boot" /var/log/tom-kmsg.log | tail -3      # which section is the dead boot
+sudo sed -n '/===== boot <THAT TIMESTAMP>/,$p' /var/log/tom-kmsg.log | tail -60
+```
+
+Search inside the dying section, in this order, and say what you find or that you
+found nothing:
+
+| pattern | what it would mean |
+| --- | --- |
+| `rcu_preempt`, `rcu_sched`, `stall` | a CPU wedged — the known hang shape; note which core |
+| `mmc`, `sdhci`, `I/O error` | SD or SDIO stop — storage showing up before the reset |
+| `nfs`, `macb`, `eth0` | the network/NFS path; the 07:07:42 correlation lives here |
+| `sched`, `DL replenish` | scheduler starvation preceding a freeze |
+| `brcmf`, `-110` | wifi firmware wedge returning |
+| `thermal`, `under-voltage`, `throttled` | power or heat |
+
+**2. `/sys/fs/pstore` — and archive before anything else touches it.** If a dump
+exists, `sudo tar czf` it out first, then read it; a panic wipes the next one.
+
+**3. `scripts/tom-watch-remote.sh` log (`/tmp/tom-watch.log`) — the outside view.**
+This is the only source that says **how long** Tom was unreachable, because Tom's
+own loggers stop when it dies. Gives the exact down window.
+
+**4. `/var/log/tom-trace.log` — corroboration only.** 15 s resolution, so it
+cannot see the final seconds; use it for the run-up (was I/O or wifi moving
+before), not for the moment of death. That is exactly the limit that made the NFS
+question unanswerable from it.
+
+**5. Then `journalctl -b -1`,** for service-level context around the same second.
+
+### Watcher health — check it every time, headline if dead
+
+The watcher is our only continuous outside view; a dead watcher is the same class
+of failure as a stale label, because the report would look complete while the
+instrument was gone. It now writes a `HEARTBEAT` line every 10 minutes precisely
+so recency means something — with transitions only, a healthy watcher could sit
+silent for hours and a recency check would cry wolf.
+
+```bash copy Copy watcher health
+P=$(cat /tmp/tom-watch.pid)
+ps -o pid,etime,args -p "$P" || echo "WATCHER DEAD"
+tail -1 /tmp/tom-watch.log
+```
+
+Healthy: the PID answers `ps`, and the last line is under ~20 minutes old. If
+either fails, **say so as the headline** — the report is not complete without it.
+Restart with `nohup ./scripts/tom-watch-remote.sh >/dev/null 2>&1 &` and rewrite
+`/tmp/tom-watch.pid` from `ps`, never from a pattern match.
+
 ### The 07:07:42 reset, and what the trace log says about the NFS idea
 
 Boot `c2fe5d10` ended at **07:07:42** after **11 h 36 m 48 s** — far longer than
