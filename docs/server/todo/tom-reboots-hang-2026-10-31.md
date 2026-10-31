@@ -130,6 +130,7 @@ clean**. Record every such boot here.
 | boot (start) | status | note |
 | --- | --- | --- |
 | 2026-10-31 19:30:54 | **partial — treat as weak** | Tee first started 20:51:41, then restarted 20:55:00 after a botched `pkill` (see runbook). Kernel log covers **20:51 onward only**; the first 80 minutes of this boot have no kmsg coverage. The 15 s trace sampler *does* cover the whole boot from 19:30, so it is the only continuous record for 19:30–20:51. Two headers in `/var/log/tom-kmsg.log` for one boot, and the ring-buffer dump is duplicated. |
+| 2026-11-01 07:08:00 | **clean — verified** | First boot with the automatic tee. Header `===== boot 2026-11-01T07:08:02` against boot start `07:08:00`: **one header, +2 s**. `@reboot` works; this is trustworthy last-words evidence. |
 | every later boot | clean (expected) | `@reboot` starts the tee at boot, so coverage begins with the boot. Verify with: one `===== boot` header per boot in `/var/log/tom-kmsg.log`. |
 
 Rule of thumb: if the crash you are reading has more than one header for its
@@ -199,6 +200,14 @@ What this does and does not change:
   rule, so the wired path is fully usable.
 
 ### How to read the uptime record
+
+**Segments, because a reboot ends one.** Recorded rather than blurred:
+
+| segment | from | to | duration |
+| --- | --- | --- | --- |
+| pre-cable baseline | boot 19:30:54 | cable in 22:34:05 | 3 h 03 m 11 s |
+| **wifi-only, boot `c2fe5d10`** | cable out 01:13:08 | hard reset 07:07:42 | **5 h 54 m 34 s** |
+| wifi-only, boot `b63e886a` | 07:08:00 | running | see latest check |
 
 **The number that counts is 3 h 03 m 11 s, wifi-only** (boot 19:30:54 → cable
 22:34:05). That is the figure to compare against the old best of 2 h 44 m 46 s,
@@ -466,6 +475,20 @@ explicitly dated timestamp, never a bare clock time. This is the **second** sile
 check bug in this ticket, and it belongs next to the header check for the same
 reason: both were wrong in the direction of "everything is fine".
 
+#### Silent-failure class 4: a check whose label does not match when it ran
+
+The 2026-11-01 "03:49" check actually ran at **08:51** — both Tom and jason
+agreed, NTP-synced on both. Nothing was wrong with either clock; the label on the
+check was stale. The effect is that "since the last check" silently covered ~6
+hours instead of one, and the report would have looked complete either way.
+
+Rule: **put the real wall time in every report, and never derive a window from
+the schedule's intention.** Compare the schedule's stated time against `date` on
+the host being read, and if they differ, say so before using either. This is the
+fourth class in this ticket, after checks that read clean (the bare `--since`),
+instructions that were never carried ([time-triggered actions need the schedule
+prompt](#)), and rollback advice that restores a blind watchdog.
+
 #### The 100 test lines at 00:21 and 00:27 are not events
 
 Almost every line in that boot is from guard development, not from Tom. Tagged
@@ -606,6 +629,42 @@ such — correlate the boot with the eth0-gone timestamp and say plainly that th
 reboot followed the cable removal, rather than reporting a boot count as if it
 were the usual unexplained reset. Conflating the two would either manufacture a
 regression or hide one.
+
+### The 07:07:42 reset, and what the trace log says about the NFS idea
+
+Boot `c2fe5d10` ended at **07:07:42** after **11 h 36 m 48 s** — far longer than
+anything before it — with the same silent signature: no shutdown messages, 0 rcu
+stalls, 0 panics, pstore empty, systemd-pstore archive empty. Nothing captured the
+cause.
+
+The last two journal entries are Tailscale SSH sessions from jason at 07:07:36 and
+07:07:42; the second's command was `ls /mnt/storage`, an NFS read. That is a
+correlation, and here is the measurement behind it rather than a hunch — trace
+samples for the 75 s before death:
+
+| time | load1 | Δ mmc_io_ms / 15 s | mmc_busy | Δ wlan tx bytes / 15 s |
+| --- | --- | --- | --- | --- |
+| 07:06:17 | 0.11 | +448 | 0 | +45,813 |
+| 07:06:32 | 0.61 | +268 | 0 | +62,084 |
+| 07:06:47 | 0.48 | +364 | 0 | +43,287 |
+| 07:07:02 | 0.37 | +280 | 0 | +48,154 |
+| 07:07:17 | 0.29 | +324 | 0 | +61,521 |
+
+**This argues against an NFS-triggered stall inside the observed window**, and it
+is worth being precise about why: no outstanding I/O at any sample (`mmc_busy=0`),
+SD I/O time *declining* rather than climbing, wlan throughput steady in its normal
+band with no retransmit spike, and load falling after a single bump. The last
+sample looks structurally identical to the minutes before it.
+
+**What it cannot rule out:** death came **25 s after the last sample** (sampler
+interval 15 s), and that gap is unobserved. So this neither confirms nor excludes
+something starting in the final seconds. It weakens "NFS read stalled the box" as
+a description of the visible run-up; it does not close the question.
+
+Next time, the way to settle it is the tee rather than the sampler: `dmesg -w` has
+microsecond resolution and will hold the last seconds if the console path survives
+— check `/var/log/tom-kmsg.log` for the dying boot for `nfs`, `macb`, `mmc` and
+`sched` lines in its final second.
 
 ### False-positive classes — read before interpreting a failed check
 

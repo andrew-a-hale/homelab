@@ -126,9 +126,27 @@ time; the timestamps only move when the kernel actually says something. Judge by
 the process tree above, and by the header count.
 
 Healthy looks like exactly three lines: `sudo → bash tom-kmsg.sh → dmesg -w`,
-plus one rotator subshell. One `dmesg` only. To restart it, find the PID in that
-tree and `sudo kill <pid>` — the orphaned child is the one to look for if the
-supervisor is gone.
+plus one rotator subshell. One `dmesg` only.
+
+**To restart it, kill by PID — and this instruction lives here, in the step that
+does the killing, on purpose.** `pkill -f tom-kmsg.sh` (or any pattern naming the
+script) also matches the ssh command line you are typing it in, and will kill your
+own session mid-restart. That happened **twice** in one night, both times to
+someone who had already written the warning down — which is why the rule is now
+in the procedure rather than in a caution above it. Read the PID off the process
+tree you just printed, and kill that:
+
+```bash copy Copy restart the tee safely
+# 1. read the tree, take the PID of the script itself (not dmesg, not your shell)
+ps -eo pid,ppid,args | grep -E "tom-kmsg|dmesg --time-format" | grep -v grep
+# 2. kill that exact PID
+sudo kill <PID_from_above>
+# 3. start it again, then re-run the health check and confirm one dmesg
+sudo nohup /home/tom/projects/tom/scripts/tom-kmsg.sh >/dev/null 2>&1 &
+```
+
+If the supervisor is already gone, the orphaned `dmesg --time-format iso -w` is
+what you are looking for — it keeps writing with no rotation and no restart.
 
 ### On the reset reason: it does not answer the question it looks like it answers
 
