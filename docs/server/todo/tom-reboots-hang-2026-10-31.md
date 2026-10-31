@@ -487,6 +487,13 @@ classification of the boot:
 worse than labelling it); they are labelled here instead. The ambiguity is fixed
 at the source: `say()` now logs only when `DRY=0`, so a dry run writes nothing.
 
+**One line in the pre-unplug batch is now misleading on its own:**
+`skipping the disruptive brcmfmac reload: another uplink is carrying traffic`
+(00:54:28) referred to **eth0**, which was up at the time and has not existed
+since 01:13:08. Read in a post-unplug window it would suggest the guard believed
+it had a second uplink when it did not. It is a pre-unplug test line; after the
+cable, `have_other_uplink` is false by definition and that branch cannot fire.
+
 **Telling them apart if you are reading an old batch:** a dry run always emits at
 least one `PLAN:` line and never a final outcome; a real run emits an outcome
 (`recovered by …`, `check: …`, `rebooting`) and never `PLAN:`. That holds for the
@@ -582,8 +589,13 @@ call once tonight.
 
 ### The first check after the unplug asks a different question
 
-**Reporting precedence once the cable is out: if the guard logs anything at all,
-that is the headline of the check — ahead of uptime.** A guard line means it
+**Reporting shape once the cable is out: lead with the wifi-only counter and any
+guard line, then uptime.** The counter is now the only thing measuring anything —
+uptime on a wired-free box is the same number with more words. The counter starts
+at the eth0-gone timestamp, not at boot.
+
+**Reporting precedence: if the guard logs anything at all, that is the headline of
+the check — ahead of both.** A guard line means it
 decided something about a link the owner can no longer reach around, so it
 outranks the usual lead fields rather than being appended to them.
 
