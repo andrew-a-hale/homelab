@@ -445,6 +445,15 @@ read over (relative or explicitly dated) and say what the lines were — cron
 silence, a real event, or labelled test output. If a window contains test noise,
 say so rather than reporting the total.
 
+**Post-event windows start *after* the last known event, not at it.** At the
+09:49 check, `--since "2026-11-01 07:10"` returned 4 lines and read like fresh
+activity, when all four were the 07:10 recovery it had already explained
+(`07:10:01` no-IPv4, `07:10:01` wifi dead, `07:10:01` restarting profile,
+`07:10:26` recovered). A window that begins *at* an event re-reports that event
+forever. Ask "anything since the last one finished" — here `--since
+"2026-11-01 07:11"` → 0 — and say which boundary you used, or the recovery reads
+as an incident every single hour.
+
 Read the guard log like this — **never with a bare time**:
 
 ```bash copy Copy guard log window
