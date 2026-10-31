@@ -253,14 +253,18 @@ roll back, copy one over the live path; nothing else is needed.
 | --- | --- | --- | --- |
 | `wifi-guard.sh.bak-20261031` | 82 | `4ffbc9ec…` | the pre-rewrite version, taken 2026-10-31 23:53. Has **both** the old `SCAN-FAILED` trigger and the added dead-wifi reconnect branch. This is the "their version" the rewrite was built on. |
 | `wifi-guard.sh.bak-20261031-2251` | 55 | `ce35b9f5…` | the original wpa_supplicant-era guard from 2026-10-27 19:33 — `SCAN-FAILED` only, no dead-wifi branch. Identical to Tom's stale clone copy. |
-| `wifi-guard.sh.bak-mine-20261101-0105` | 370 | `40bea585…` | byte-identical to the currently deployed file. A no-op backup taken by the other thread at 01:05; it is not an older state. |
+| `wifi-guard.sh.bak-mine-20261101-0105` | 370 | `40bea585…` | **redundant, not a historical state** — byte-identical to the currently deployed file, a no-op backup taken at 01:05. Safe to delete whenever space is wanted; it restores nothing you do not already have. |
 
-**Rolling back is not free, and this matters at 2 a.m.:** the first two depend on
-`SCAN-FAILED`, which only wpa_supplicant ever wrote. Restoring either one puts back
-a guard that **cannot detect anything** on the current iwd stack — it would sit
-silent while wifi was dead. Rolling back to them is a return to a blind watchdog,
-not to a working one. Prefer fixing forward; both older copies are for
-understanding history, not for recovery.
+**There is no rollback path to a working guard.** The first two depend on
+`SCAN-FAILED`, which only wpa_supplicant ever wrote; restoring either one gives a
+guard that **cannot detect anything** on the current iwd stack and would sit
+silent while wifi was dead. The third is the live file, so it restores nothing.
+
+So recovery is **fix-forward**, and the premise is different from "keep a backup
+in case": the current file plus the repo copy on `tom-hang-capture` is the
+recovery path. If the deployed guard is broken or missing, copy
+`scripts/wifi-guard.sh` from that branch to `/usr/local/bin/` — do not reach for a
+`bak-*`. The older copies are for understanding history only.
 
 **Deployment is copy-to-`/usr/local/bin`, and nothing else.** Tom's own checkout
 at `/home/tom/projects/tom` is a stale clone sitting on `master` and is **neither
