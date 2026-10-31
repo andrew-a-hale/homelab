@@ -5,6 +5,15 @@ default IPQoS marks packets that Jason's UFW/conntrack drops, which made direct
 SSH to Tom time out. Do not reintroduce the old `ProxyCommand` bash `/dev/tcp`
 wrapper.
 
+Names (2026-10-31): `tom` / `tom.tailad1015.ts.net` (Tailscale MagicDNS,
+100.77.132.110) is the primary name everywhere — scripts, docs, ssh — because it
+is uplink-agnostic. `tom.local` is a LAN-only convenience pinned in `/etc/hosts`
+to **both** LAN addresses: `192.168.1.24` (Wi-Fi, the permanent uplink) and
+`192.168.1.23` (the temporary wired cable), so it resolves whichever is present.
+`ssh tom-wired` reaches `.23` directly. Do not hard-code a LAN address in a
+script or doc: both LAN addresses are only valid while their interface carries
+the uplink, which is exactly why the tailnet name is the default.
+
 # Server Migration
 
 // NOTE: I've bought a Dell Optiplex and a 4TB HDD to attach to the Dell. We will install ubuntu on it.
@@ -57,7 +66,7 @@ User decision — it's a gaming rig. Also the most expensive option per year.
    the same path when it arrives — one fstab line swap, zero config edits.
 2. ~~rsync library + jellyfin config → Pi, install jellyfin~~ **done**:
    3GB library + config (user, libraries, DLNA plugin) live on the Pi,
-   `http://192.168.1.24:8096`, unit `jellyfin` enabled at boot.
+   `http://tom/jf` (BaseUrl `/jf`), unit `jellyfin` enabled at boot.
 3. ~~qBittorrent-nox on the Pi bound to protonvpn~~ **done**: unit
    `qbittorrent-nox@tom`, WebUI 127.0.0.1:8081 loopback-only, external address
    = Proton exit. `scripts/grab*` reach it over `ssh tom`.
@@ -112,8 +121,8 @@ playing ~everything H.264/HEVC.)
 
 ## Known stability issue: random Tom reboots
 
-There are **two distinct reboot causes** on Tom; check the journal before
-assuming which one fired:
+There are **three distinct reboot causes** in Tom's history; only the third is
+still live, so check the journal before assuming which one fired:
 
 1. **Camera (imx708) I2C/CSI stall** — `rpicam-vid` timing out on the CSI/I2C
    bus while the 24/7 petcam pipeline runs, starving RCU until the hardware
@@ -124,17 +133,91 @@ assuming which one fired:
    reseat the ribbon. **Reseated 2026-10-27, clean since** (one clean start per
    boot, no `no cameras available`); watch `~/petcam/logs/rpicam.log` for a flap
    returning before blaming anything else.
-2. **Wifi scan engine wedge (brcmfmac)** — 6 reboots on 2026-10-27. Firmware
-   never completes a scan (`Scanning suppressed: status (4)`), wpa_supplicant
-   retries once a second forever, then a stuck SDIO command hangs a CPU
-   (`rcu_preempt stalls`, `brcmf_proto_bcdc_msg failed w/status -110`) and the
-   board reboots. There is **no ethernet on Tom**, so wifi is the only path:
-   `scripts/wifi-guard.sh` runs every 2 minutes from tom's crontab and reloads
-   `brcmfmac_cyw`+`brcmfmac` when the storm is present (reboot fallback if the
-   link does not come back). Diagnosis + trade-offs:
-   `docs/server/complete/wifi-scan-storm-watchdog-2026-10-27.md`; open work and
-   verification steps: `docs/server/todo/wifi-scan-wedge-2026-10-27.md`.
+2. **Wifi scan engine wedge (brcmfmac)** — 6 reboots on 2026-10-27, more on
+   2026-10-28 (every 1–1.5 h). Firmware never completed a scan (`Scanning
+   suppressed: status (4)`); NetworkManager/wpa_supplicant's roaming `bgscan`
+   fired the trigger ~5 min after every connect, then a stuck SDIO command hung
+   a CPU (`rcu_preempt stalls`, `brcmf_proto_bcdc_msg failed w/status -110`).
+   **This one is fixed and closed.** Tom's Wi-Fi runs on the iwd backend
+   (wpa_supplicant masked) and `SCAN-FAILED` has been **0 on every boot since**
+   the 2026-10-29 migration — 64,918 of those lines exist, all dated 10-26..28.
+   `scripts/wifi-guard.sh` stays installed but is **inert** (its trigger no
+   longer exists) and has not fired since 2026-10-28 18:18. Details + the failed
+   first attempt (why `[device]` not `[main]`, why iwd needs a native network
+   file): `docs/server/complete/iwd-wifi-backend-migration-2026-10-29.md`,
+   `docs/server/complete/iwd-outage-and-wired-ethernet-2026-10-29.md`; closure
+   evidence: `docs/server/complete/wifi-scan-wedge-2026-10-31.md`.
+3. **Unidentified hard hang — the one that is still live.** Fixing the scan
+   wedge did **not** stop the restarts; they got more frequent (19 boots on
+   2026-10-31 alone, gaps of 77 s to 2.5 h). Tom is hard-reset by the systemd
+   hardware watchdog (1 min) with no shutdown message in the journal; about a
+   third of boots show `rcu_preempt detected stalls` on **CPU 3 that never
+   answers the NMI**, the rest die silently. The 2026-10-27 13:42 restart once
+   called "unexplained" has this same signature. Power, thermal, SD and EXT4
+   logs are all clean. **Capture is live as of 2026-10-31** (one deliberate
+   reboot): ramoops/pstore via `dtoverlay=ramoops-pi5`, `panic=15`, and
+   `kernel.panic_on_rcu_stall=1`, so a stall now panics and dumps instead of
+   freezing until the watchdog resets it; `scripts/tom-trace.sh` logs SD
+   and wlan0 counters every 15 s to `/var/log/tom-trace.log`, and
+   `scripts/tom-kmsg.sh` tees `dmesg -w` with microsecond timestamps to
+   `/var/log/tom-kmsg.log` so a silent freeze keeps the kernel's last seconds
+   (journald flushes only every 5 s). Nothing has fired yet. The same reboot took the bootloader from
+   2025-05-08 to 2026-09-25 (and moved the RP1 firmware with it). Runbook,
+   revert path, and the answer to "how connected is Tom?":
+   `docs/server/complete/crash-capture-and-bootloader-2026-10-31.md`. Open work:
+   `docs/server/todo/tom-reboots-hang-2026-10-31.md`.
 
-Tell them apart fast: `journalctl -b -1 -o cat | grep -c SCAN-FAILED` (wifi) vs
-`journalctl -b -1 -o cat | grep -ciE 'imx708|unicam|csi'` (camera), plus
-`journalctl -t wifi-guard` and `journalctl -t tom-health` for power/thermal.
+Tell them apart fast: `journalctl -b -1 -o cat | grep -c SCAN-FAILED` (wifi —
+expect **0** now; a non-zero count means the wedge is back) vs
+`journalctl -b -1 -o cat | grep -c 'failed to set mode'` (camera) vs
+`journalctl -b -1 -o cat | grep -c 'rcu_preempt detected stalls'` (the live
+hang), plus `journalctl -t wifi-guard` and `journalctl -t tom-health` for
+power/thermal. Grepping the camera with `imx708|unicam|csi` is misleading: the
+~22 `imx708` lines per boot are benign probe messages, and `rp1-cfe` alone
+contributes 351k lines of noise to the journal.
+
+Wi-Fi (`wlan0`, `192.168.1.24`) is the intended uplink. The Ethernet cable
+plugged in on 2026-10-31 is **temporary** — a recovery path while the Wi-Fi
+fault was chased — and `192.168.1.23` disappears with it. Both addresses are in
+jason's NFS export and ufw rule so either works.
+
+`scripts/wifi-guard.sh` (installed at `/usr/local/bin/wifi-guard.sh`, cron every
+2 minutes) was rewritten on 2026-10-31 for the iwd backend and **no longer looks
+at `SCAN-FAILED` at all** — that string only ever came from wpa_supplicant, which
+is masked, so the old trigger could not fire whatever the firmware did. It now
+declares wifi dead if `wlan0` has no IPv4, or if it holds an address but reaches
+**neither** the gateway **nor** an off-LAN literal over `wlan0` (`-I wlan0`, so
+neither probe can follow eth0) on two consecutive runs. Both-fail is the only
+combination that acts; gateway-up-but-off-LAN-down is treated as an upstream
+fault and only logged, and a blocked off-LAN target therefore degrades to
+log-only rather than causing churn. Recovery is a `nmcli` profile restart, then a
+brcmfmac reload, then a deferred reboot that fires only if wifi is still dead
+**and** no other interface has a default route. The reload is skipped entirely
+while another uplink is carrying traffic, because stopping NetworkManager would
+drop that too.
+
+## Package updates — decision (2026-10-31)
+
+**Security-only unattended upgrades. Nothing else lands on its own.**
+
+`unattended-upgrades` is installed and restricted to the Debian
+`trixie-security` pocket, with `Unattended-Upgrade::Automatic-Reboot "false"` so
+a kernel update can never reboot Tom by itself. The old hourly
+`apt update -y && apt upgrade -y` root cron is gone; `apt-daily.timer`
+(`APT::Periodic::Update-Package-Lists "1"`) now refreshes lists instead.
+
+Why: an hourly blanket `apt upgrade` was a supply-chain and debugging liability
+on a box whose stability was being measured. Worse, the shipped
+`50unattended-upgrades` default includes
+`origin=Debian,codename=${distro_codename},label=Debian`, which matches the whole
+main suite — the "security only" intent needs that pattern commented out.
+
+**The caveat:** `archive.raspberrypi.com` has no security pocket (single
+`trixie` suite, `Origin: Raspberry Pi Foundation`), so there is no way to
+express "rpt security only". Consequence: **kernel, `firmware-brcm80211` and
+`rpi-eeprom` are no longer upgraded automatically — apply them by hand.** Same
+for Docker, Jellyfin, Tailscale, nodesource, GitHub CLI and ProtonVPN.
+
+Deliberately apply the rpt stack when you want it, and remember it costs the
+clean-stretch clock. Background, the origin/label analysis and the revert path:
+`docs/server/complete/crash-capture-and-bootloader-2026-10-31.md`.

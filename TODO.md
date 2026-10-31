@@ -13,9 +13,7 @@
 
 - [ ] Change qBittorrent login to tom/pancake
 
-- [x] Diagnose Tom restarts (root cause: Pi Camera Module 3 I2C/CSI stall -> RCU stall -> watchdog reboot; see docs/petcam/complete/camera-i2c-rcu-stall-reboot-2026-10-25.md)
-- [x] Fix Tom restarts — camera cause fixed: CSI ribbon reseated 2026-10-27, sensor enumerates, no `no cameras available` since (see docs/petcam/complete/camera-reboots-2026-10-27.md)
-- [ ] Fix Tom restarts — wifi cause: brcmfmac scan wedge → wpa_supplicant scan storm → stuck SDIO → RCU stall → reboot. Mitigation live (`scripts/wifi-guard.sh`, cron every 2 min); still needs a week of clean boots, one unexplained 13:42 reboot, PSU check and `rpi-eeprom-update -a` (docs/server/todo/wifi-scan-wedge-2026-10-27.md)
+- [ ] Fix Tom restarts — **wifi cause eliminated, restarts still unexplained**. Scan wedge fixed (iwd backend since 2026-10-29: 0 `SCAN-FAILED` every boot, `wifi-guard` silent since 10-28 18:18 — docs/server/complete/wifi-scan-wedge-2026-10-31.md), but Tom still hard-resets ~hourly (19 boots on 2026-10-31, gaps 77 s–2.5 h) — watchdog reset with no shutdown message, `rcu_preempt` stall on CPU 3 (never any other core) in ~⅓ of boots, silent otherwise. Capture is live since 2026-10-31 (ramoops/pstore + `panic=15` + `panic_on_rcu_stall`, `scripts/tom-trace.sh`); bootloader updated to 2026-09-25. Next: read the first pstore dump — archived automatically to /var/lib/systemd/pstore/ — and compare `/var/log/tom-trace.log` against the crash gap. Still open: PSU/cable check (owner, physical) and the SD card as suspect (docs/server/todo/tom-reboots-hang-2026-10-31.md)
 
 - [ ] Convert blog to Zine (https://zine-ssg.io/) and put the blog on a subdomain
 

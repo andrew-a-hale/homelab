@@ -58,7 +58,7 @@ itself a trigger).
 1. ~~Reseat the Camera Module 3 ribbon at both ends~~ — **done 2026-10-27, fixed
    the camera** (see Resolution above).
 2. Verify power, 3. bootloader update, 4. USB webcam fallback: not camera work —
-   carried into `docs/server/todo/wifi-scan-wedge-2026-10-27.md`.
+   carried into `docs/server/todo/tom-reboots-hang-2026-10-31.md`.
 
 ## Resolution 2026-10-27: CSI ribbon contact
 
@@ -84,7 +84,7 @@ second, independent fault — a wedged brcmfmac wifi scan engine. Camera error
 counts are identical on clean and crashed boots, so the camera is not the
 differentiator for them. That work, plus PSU verification, the bootloader update
 and one unexplained 13:42 reboot, moved to
-`docs/server/todo/wifi-scan-wedge-2026-10-27.md`.
+`docs/server/todo/tom-reboots-hang-2026-10-31.md`.
 
 ## Verify after the next reboot
 
