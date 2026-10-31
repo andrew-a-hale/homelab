@@ -630,6 +630,32 @@ reboot followed the cable removal, rather than reporting a boot count as if it
 were the usual unexplained reset. Conflating the two would either manufacture a
 regression or hide one.
 
+### Standby item: the deliberate disconnect test (item 4), still not run
+
+Authorised 02:49, **not executed**. By the time it was started (08:50) Tom had
+rebooted and the guard had already recovered organically, so running a synthetic
+disconnect on top of an unexplained reset would have mixed two things.
+
+**What it would still test:** tier 1 is now proven on a real fault (25 s,
+unattended, see above). Untested are **tier 2 (brcmfmac reload)** and the
+**deferred reboot path** — neither has ever executed.
+
+**How it gets scheduled:** it is carried by the recurring check prompt from here,
+not by "idle until HH:MM". That phrasing means "wait until someone messages me",
+which is how it silently failed to happen the first time (silent-failure class 3).
+
+### Watching from outside: `scripts/tom-watch-remote.sh`
+
+Runs on **jason**, not Tom, and logs UP/DOWN transitions to `/tmp/tom-watch.log`.
+Tom's own loggers cannot report how long it was unreachable — they stop
+mid-sentence when the board dies — so an outside observer is the only thing that
+turns "Tom rebooted" into "unreachable for N seconds at HH:MM:SS".
+
+Started as `nohup ./scripts/tom-watch-remote.sh >/dev/null 2>&1 &`, with the PID
+recorded in `/tmp/tom-watch.pid`. **Stop it by that PID**, never by pattern — the
+same trap that killed two shells in one night. If the pidfile is missing, read the
+PID from `ps -eo pid,ppid,args | grep tom-watch | grep -v "bash -c"`.
+
 ### The 07:07:42 reset, and what the trace log says about the NFS idea
 
 Boot `c2fe5d10` ended at **07:07:42** after **11 h 36 m 48 s** — far longer than
