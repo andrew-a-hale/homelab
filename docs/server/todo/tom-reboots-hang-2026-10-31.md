@@ -244,6 +244,12 @@ moved only by the ssh session's replies, and the ping header read
 `from 192.168.1.24 wlan0`. Interface-name `-I` binds the device; the claim was
 wrong. Recorded so it is not re-litigated from the diff.
 
+**Deployment is copy-to-`/usr/local/bin`, and nothing else.** Tom's own checkout
+at `/home/tom/projects/tom` is a stale clone sitting on `master` and is **neither
+authoritative nor current** — its `scripts/wifi-guard.sh` is an old 55-line
+version. Do not diff against it or "fix" a mismatch there; the only comparison
+that means anything is repo ↔ `/usr/local/bin/wifi-guard.sh`.
+
 **They match by hand, not by deployment.** `scripts/wifi-guard.sh` in the repo and
 `/usr/local/bin/wifi-guard.sh` on Tom are copied across manually — there is no
 install step, symlink or packaging that keeps them in step. Byte-identical today
