@@ -685,8 +685,17 @@ PID from `ps -eo pid,ppid,args | grep tom-watch | grep -v "bash -c"`.
 Written down now so nobody has to work it out while Tom is down and the clock is
 running.
 
-**1. `/var/log/tom-kmsg.log` — primary evidence.** Microsecond timestamps, and the
-per-boot header tells you which section is the dying boot:
+**0. Read this correction first — the tee is incomplete at the moment of death.**
+Proven on 2026-11-01: boot `b63e886a` panicked at 10:30:49, and its section of the
+tee ends at 07:10:14 followed by **NUL bytes**. The final burst — 45 kernel lines
+including the stall dump and the panic — never reached disk, because `panic=15`
+reboots without syncing and ext4's delayed allocation hands back zeros.
+`journalctl -b -1` held all of it. So: **journald is the source for the last 60
+seconds; the tee is the source for everything before it.** Never conclude "silent
+death" from the tee alone. A NUL tail is the tell that a burst was lost.
+
+**1. `/var/log/tom-kmsg.log` — primary evidence for the run-up.** Microsecond
+timestamps, and the per-boot header tells you which section is the dying boot:
 
 ```bash copy Copy first read after a reset
 sudo grep -an "===== boot" /var/log/tom-kmsg.log | tail -3      # which section is the dead boot
@@ -708,6 +717,14 @@ found nothing:
 **2. `/sys/fs/pstore` — and archive before anything else touches it.** If a dump
 exists, `sudo tar czf` it out first, then read it; a panic wipes the next one.
 
+**But an empty pstore is not evidence of a silent death.** On this box pstore has
+never produced a record, including for a real panic (`b63e886a`, 2026-11-01
+10:30:49) — see "pstore: registered, correctly sized, and still silent". So read
+this step as *check, and if empty say so without concluding anything*. Also check
+`/var/lib/systemd/pstore/` as well as `/sys/fs/pstore/`: `systemd-pstore` runs at
+boot and **moves** any record out of `/sys/fs/pstore` before you can look, so
+checking only the latter after a reboot reports "empty" even when a dump exists.
+
 **3. `scripts/tom-watch-remote.sh` log (`/tmp/tom-watch.log`) — the outside view.**
 This is the only source that says **how long** Tom was unreachable, because Tom's
 own loggers stop when it dies. Gives the exact down window.
@@ -716,6 +733,52 @@ own loggers stop when it dies. Gives the exact down window.
 cannot see the final seconds; use it for the run-up (was I/O or wifi moving
 before), not for the moment of death. That is exactly the limit that made the NFS
 question unanswerable from it.
+
+**How to read the fields — `mmc_io_ms` is cumulative, not per-sample:**
+
+| field | source | kind |
+| --- | --- | --- |
+| `mmc_rd`, `mmc_wr` | `/sys/block/mmcblk0/stat` fields 1, 5 | cumulative counts |
+| `mmc_io_ms` | field 10, `io_ticks` | **cumulative ms**, monotonic within a boot, reset at boot |
+| `mmc_busy` | field 9, in-flight I/Os | instantaneous gauge, the only one of these that can fall |
+
+Verified on boot `76a0c076`:
+
+```text
+10:35:01  up=125    mmc_rd=16140  mmc_wr=2838   mmc_io_ms=13388
+10:50:01  up=1026   mmc_rd=25736  mmc_wr=22031  mmc_io_ms=44336
+11:30:03  up=3427   mmc_rd=42381  mmc_wr=80503  mmc_io_ms=109876
+12:22:04  up=6548   mmc_rd=42822  mmc_wr=156800 mmc_io_ms=171764
+12:50:05  up=8229   mmc_rd=42999  mmc_wr=200432 mmc_io_ms=207300
+```
+
+**The correct reading:** compare **deltas between matched uptime points inside one
+boot**, never absolute values across boots — a fresh boot starts every counter at
+0, so the same workload looks like a dramatic improvement. And a *decrease* within
+a boot is not less I/O; it means the counter reset, i.e. a new boot or the device
+re-enumerated, which is itself a finding worth chasing.
+
+**The trap this note exists to prevent.** During the 12:49 check I reported
+`mmc_io_ms` as "non-monotonic, an interval measure" on the strength of
+`172720 → 20666`. That was false: the second number was my own `cut -c1-96`
+truncating the field mid-value. The counter was 172720 → 207300, perfectly
+monotonic.
+
+**Reporting rules for numbers — this is a rule, not a formatting preference:**
+
+1. **Quote the field whole, and name its index and source in the same breath.**
+   `207300` says nothing on its own, and `mmc_io_ms` alone does not say what it
+   measures. Write "`mmc_io_ms` 207300 — field 10 of `/sys/block/mmcblk0/stat`,
+   cumulative since boot". The next reader, or the next session, cannot
+   reconstruct the meaning from a bare number, and a truncated one is
+   indistinguishable from a real reading.
+2. **When a reading looks anomalous, re-read it raw before reporting it.** One
+   command — `cat /sys/block/mmcblk0/stat`, or the untruncated log line —
+   separates a finding from an artefact. `cut` is the usual culprit; shell
+   pipelines that format for display are where truth gets lost.
+
+The cost of skipping rule 2 is not a typo: this one reached a report before it
+was caught, and would have entered this ticket as a fact.
 
 **5. Then `journalctl -b -1`,** for service-level context around the same second.
 
@@ -831,6 +894,471 @@ outage. Only `.24` (and the tailnet name) are meaningful after the unplug.
   approved it afterwards ("a capture that can't fire on the actual failure mode
   isn't a capture"). It gives roughly a 21 s self-recovery on stall boots
   instead of waiting out the 1-minute watchdog.
+
+## 2026-11-01 10:30–10:34 — two resets 97 s apart, and the first captured stall payload
+
+Measured 2026-11-01 10:49–10:52 AEST, cable still out, `eth0` `DOWN`.
+
+| boot | started | ended | length |
+| --- | --- | --- | --- |
+| `b63e886a` | 07:08:00 | **10:30:49** | 3 h 22 m 49 s |
+| `204f8e94` | 10:31:02 | **10:32:26** | **84 s** |
+| `76a0c076` | 10:32:58 | running | — |
+
+The watcher's outside view: `DOWN 10:30:42 → UP 10:32:05` (1 m 23 s) and
+`DOWN 10:32:36 → UP 10:34:04` (1 m 28 s) — **2 m 51 s unreachable in total**.
+Both resets are new since the 07:07:42 one; the 84-second boot is a shape not seen
+before.
+
+The guard fired on both boots, tier 1, unattended, in ~25 s each: `10:32:01.714 →
+10:32:26.407` and `10:34:01.749 → 10:34:26.384`, both "wlan0 has no IPv4" →
+profile restart. **Post-reset, wlan0 consistently comes up without an IPv4 lease
+until the guard restarts the profile** — that is now the normal recovery step, not
+a fault on top of one.
+
+### The stall payload — what `panic_on_rcu_stall` bought us
+
+Boot `b63e886a`, from `journalctl -b -2`:
+
+```text
+rcu: INFO: rcu_preempt detected stalls on CPUs/tasks:
+rcu:     3-...0: (4 ticks this GP) idle=daac/1/0x4000000000000000 softirq=344573/344574 fqs=1036
+rcu:     (detected by 2, t=5256 jiffies, g=791465, q=2608 ncpus=4)
+Sending NMI from CPU 2 to CPUs 3:
+i2c_designware 1f00088000.i2c: controller timed out
+imx708 10-001a: imx708_stop_streaming failed to set stream
+rcu: rcu_preempt kthread timer wakeup didn't happen for 2504 jiffies! ... Possible timer handling issue on cpu=2
+Kernel panic - not syncing: RCU Stall
+```
+
+**CPU 3 wedged and did not answer the NMI from CPU 2** — the same core as the
+earlier stalls. Panic at `10:30:49.585`, next boot `10:31:02` = 13 s, i.e. the
+`panic=15` path, not the 1-minute hardware watchdog. pstore was empty afterwards —
+see "pstore: registered, correctly sized, and still silent" below for why that is a
+separate problem rather than an explanation.
+
+### The camera/i2c pairing — counted across every boot in the journal, and it is a symptom
+
+**71 boots are retained. 23 logged an RCU stall. 8 logged an i2c controller
+timeout. 8 logged `imx708_stop_streaming failed`. Exactly 1 logged a panic.**
+
+The two camera-bus messages are not merely correlated, they are the **same eight
+boots**, in both directions — there is no boot with one and not the other:
+
+| boot | RCU stall lines | i2c timeout | `stop_streaming` failed |
+| --- | --- | --- | --- |
+| `-62` | 30 | yes | 1 |
+| `-53` | 2 | yes | 2 |
+| `-39` | 1 | yes | 1 |
+| `-25` | 2 | yes | 2 |
+| `-23` | 4 | yes | 1 |
+| `-16` | 2 | yes | 1 |
+| `-5` | 1 | yes | 1 |
+| `-2` (panicked) | 1 | yes | 1 |
+| the other 63 boots | 0 in 48 of them, 1–3 in the rest | 0 | 0 |
+
+So, plainly:
+
+- **8 of 8 i2c-timeout boots also stalled. 8 of 8 `stop_streaming` boots are the
+  same boots.** Neither message has ever appeared without a stall.
+- **But only 8 of the 23 stall boots mention either.** 15 stalls happened with no
+  camera-bus message at all.
+- `imx708` line *counts* are not a discriminator (baseline 22–23 per boot; only
+  `-62`, `-53`, `-25`, `-23`, `-16` rise above it).
+
+**The ordering kills the causal reading.** In `-25`, `-23` and `-16` the i2c
+timeout and the camera failure appear **after** `Sending NMI from CPU … to CPUs 3`,
+by microseconds to seconds:
+
+```text
+-25  05:16:25.021980  rcu: INFO: rcu_preempt detected stalls
+     05:16:29.343331  Sending NMI from CPU 0 to CPUs 3
+     05:16:29.343369  i2c_designware 1f00088000.i2c: controller timed out
+     05:16:29.343627  imx708 10-001a: imx708_stop_streaming failed to set stream
+```
+
+That is the frozen bus reporting, not a fault that preceded the wedge. And the
+ratio says the same thing: if the camera were the trigger, most stalls would show
+it; instead only a third do, i.e. the camera has to be *mid-transaction* when the
+CPU wedges for the message to appear. Symptom, not cause — and the messages are
+useful as a fingerprint of *which* core and path was busy at the wedge, not as the
+reason for it.
+
+**What this means for the proposed six-hour petcam test:** still informative, but
+its prior is now *lower*, not higher. If stalls stop with petcam stopped the
+camera path is genuinely involved; if they continue it is not. Nobody should
+expect the camera to be the cause on this evidence — the strongest single fact
+remains that a stalled CPU 3 does not answer an NMI, which is a layer below any
+driver.
+
+### `panic_on_rcu_stall=1` — the trade, and when to turn it off
+
+Kept. It is what produced the first real stack trace of the investigation, and
+without it `b63e886a` would have been another silent death.
+
+The cost, stated honestly: **an RCU stall is survivable.** `f697b023` stalled at
+`19:08:40` — with no `panic_on_rcu_stall` set yet — and kept running another 22
+minutes to a deliberate shutdown. So the sysctl converts a fault that *might*
+self-heal into a guaranteed reboot. That is worth paying while the cause is
+unknown, because the alternative is a board that reboots silently and tells us
+nothing.
+
+Turn it off when any one of these becomes true:
+
+- the stall has a known cause and a fix, so the trace is no longer needed;
+- stalls are frequent enough that the reboots cost more than the diagnosis is
+  worth (rough guide: more than ~3 per day);
+- the stall turns out to be a *consequence* of the real fault rather than the
+  fault, and the panic is destroying evidence of the earlier stage — in that case
+  reverting costs nothing and keeps the box up.
+
+Also keep in mind: the stall is detected *after* the wedge (up to ~52 s, the
+`t=5256 jiffies` in `b63e886a`), so the panic timestamp is not when things went
+wrong.
+
+### The tee lost its own ending — journald is the source for the last 60 s
+
+The tee's section for `b63e886a` ends at **07:10:14**, and the bytes after it are
+**NUL**. The kernel was genuinely quiet between 07:11 and 10:30:30 (journald: 0
+kernel messages), so the file is honest about the quiet — but the final 45 kernel
+lines, including the whole stall dump and the panic, never reached disk.
+`panic=15` reboots without syncing, and ext4's delayed allocation returns zeros.
+`journalctl -b -2` had all of it. Read order corrected at "First read after the
+next reset".
+
+### The 84-second boot (`204f8e94`) — what killed it
+
+The three sources, in time order:
+
+| time | source | what |
+| --- | --- | --- |
+| 10:31:02 | `journalctl --list-boots` | boot starts |
+| 10:31:09.617 | kernel (journald **and** tee agree) | last kernel message: `tun: Universal TUN/TAP device driver` |
+| 10:32:01.749 | wifi-guard | fires, tier 1, `wlan0 has no IPv4` |
+| 10:32:26.407 | wifi-guard | "recovered by restarting the wifi profile" |
+| 10:32:26.846 | tailscaled | ssh session from jason starts a python heredoc |
+| 10:32:26.885 | journald | **last line of the boot**: `Started session-c6.scope` |
+| 10:32:58 | `--list-boots` | next boot starts — **31 s later** |
+
+What this establishes:
+
+- **The guard did not kill it.** The recovery message is at `10:32:26.407` and the
+  board kept logging for another 0.48 s. A profile restart that killed the board
+  would not leave it running and starting new logind sessions afterwards.
+- **It was a hard reset, not the panic path.** The next boot came 31 s after
+  death; the `b63e886a` panic-to-boot gap was 12.4 s (`panic=15`). Different
+  reset type.
+- **It was silent at kernel level**, like `c2fe5d10` at 07:07:42 and unlike
+  `b63e886a` at 10:30:49. No stall, no panic, nothing in the tee, nothing in
+  pstore.
+- The only thing that distinguishes it from every other silent death is that it
+  came **97 s after a panic-driven reboot**, 84 s into a boot that never settled.
+  Hypothesis, not finding: a warm reset (`reboot=w` is firmware-injected, it is
+  not in `cmdline.txt`) leaves the board in a state where a second reset follows.
+  Testable cheaply — if a future panic reboot is followed by a short-lived boot
+  again, that is the pattern; if not, this was a one-off.
+
+### Provenance of the tailscale sessions — answered
+
+Eight sessions bracketed the two resets (`10:30:22`, `10:30:28`, `10:30:29`,
+`10:30:36`, then `10:32:09`–`10:32:26`). They were **not** from this thread and
+not from Tom itself. The command line answers it:
+
+```text
+--remote-user=andrew.hale003@gmail.com --remote-ip=100.95.54.82 --cmd=echo TOM-UP; u...
+```
+
+`100.95.54.82` is **jason**. The commands are read-only health probes (`echo
+TOM-UP`, `ip -br addr`). No script in this repo, no crontab entry, and no running
+process on jason produces them, and this thread's own ssh uses plain sshd from
+`192.168.1.181` (visible in `who`) rather than Tailscale SSH. So the likely source
+is another agent session on jason, not a scheduled job. Recorded as provenance
+because a box that resets while someone is logged into it has a confounder; the
+commands themselves are innocuous.
+
+### pstore: registered, correctly sized, and still silent
+
+This is the one open question that got worse, not better. The `b63e886a` panic was
+exactly the case ramoops exists for, and it produced nothing.
+
+What is *not* wrong:
+
+- The region is reserved: `reserved mem: 0x0b000000..0x0b00ffff (64 KiB) map non-reusable ramoops@b000000`.
+- Zones are configured: `record-size = 0x4000` (16 KiB × 4), `console-size = 0` — enough for the ~6 KB stall dump.
+- `max_reason = 2`, so `KMSG_DUMP_PANIC` (1) is at or below the threshold.
+- `systemd-pstore` is **not** eating it: the unit skipped with `ConditionDirectoryNotEmpty=/sys/fs/pstore` unmet, and `/var/lib/systemd/pstore/` is empty.
+- Compression is on (`deflate`), `ecc: 0`, and the region is excluded from the allocator.
+
+So the capture path is configured correctly and produces nothing. Two candidates
+remain, and they need different fixes:
+
+1. **The write never happens** — the panic path on a wedged CPU does not reach
+   `kmsg_dump()`, or deadlocks on its lock.
+2. **The write happens and is lost** — the Pi 5 firmware/`reboot=w` path clears or
+   re-trains the reserved region before the next kernel reads it.
+
+They are separable by one test that reboots Tom: `echo c > /proc/sysrq-trigger`
+with `panic=15`, then check `/sys/fs/pstore` before anything else runs. A record
+there means the panic path works and our real panics differ (candidate 1 is about
+the *wedged* panic specifically); no record with a clean panic means the region
+does not survive (candidate 2). **Not run — it reboots the board, so it is the
+owner's call.** Until one of them is ruled out, "pstore empty" is not evidence of
+a silent death, and must stop being read as one.
+
+## Why `ssh tom` goes over Tailscale — measured 2026-11-01 11:08–11:13
+
+Asked directly, so measured rather than reasoned.
+
+**Resolution and route:**
+
+| command | resolves to | route |
+| --- | --- | --- |
+| `ssh tom` | `tom.tailad1015.ts.net` → `100.77.132.110` | `dev tailscale0 table 52 src 100.95.54.82` |
+| `ssh tom@192.168.1.24` | as typed | `dev wlp13s0 src 192.168.1.181` |
+
+Both hosts are on the same LAN (jason on wifi `wlp13s0` at `.181`, Tom on wifi at
+`.24`).
+
+**Latency — the tailnet path is not slower, because it is not relayed:**
+
+```text
+ping 192.168.1.24       rtt min/avg/max/mdev = 1.306/3.477/4.579/1.284 ms
+ping 100.77.132.110     rtt min/avg/max/mdev = 1.790/3.829/5.117/1.246 ms
+```
+
+`tailscale status` shows `tom ... active; direct 192.168.1.24:41641` — the
+WireGuard tunnel is **direct over the LAN**, and `relay=syd` is configured but
+unused. So the tailnet adds a WireGuard header, not a hop.
+
+**Handshake — the tailnet path is actually faster:**
+
+```text
+ssh tom              73 ms, 73 ms, 82 ms
+ssh tom@192.168.1.24 129 ms, 150 ms, 131 ms   (with -o IPQoS=none, so not the conntrack trap)
+```
+
+`ssh -v tom` explains it: `remote software version Tailscale`, `Authenticated to
+tom.tailad1015.ts.net ... using "none"`. This is **Tailscale SSH, not sshd** —
+identity-based, so there is no key exchange and no publickey auth round trip. The
+`.24` path is full sshd over wifi.
+
+**When and why it changed:** `~/.ssh/config` was edited at **2026-10-31 22:42**
+(the backup `~/.ssh/config.bak-20261031-2242` is the pre-change copy), which is
+while the cable was still in and before the 01:13 unplug:
+
+```diff
+-Host 192.168.1.24 raspberrypi tom
+-    HostName 192.168.1.24
++Host tom raspberrypi
++    HostName tom.tailad1015.ts.net
+```
+
+The reason is recorded in the reachability audit above: default SSH `IPQoS`
+marking that jason's UFW/conntrack dropped (3/3 timeouts without `IPQoS none`,
+3/3 success with it), compounded by Tom being dual-homed and answering a
+connection that arrived on `.24` from `.23` — an asymmetric flow. Pointing `Host
+tom` at the tailnet name removed both problems at once.
+
+**So the current state is not wrong, and the premise "LAN is faster" does not hold
+here.** Same RTT, faster handshake, works off-LAN, survives a DHCP change. What we
+pay is a dependency, not milliseconds.
+
+**The tradeoff, stated as a tradeoff:**
+
+| | tailnet alias | LAN address |
+| --- | --- | --- |
+| latency | same (direct path, ~3.8 ms) | ~3.5 ms |
+| handshake | faster (Tailscale SSH, ~78 ms) | sshd, ~137 ms |
+| survives IP change / off-LAN | yes | no |
+| depends on | tailscaled on both ends **and** the Tailscale control plane | jason's UFW/conntrack behaving, DHCP reservation, Tom's wifi |
+| forensics | sessions appear as `tailscaled` / `ssh-session(...)`, almost no PAM trail | normal sshd, `who`, `last` |
+| failure we have already hit | — | `IPQoS`/conntrack, dual-homed asymmetric replies |
+
+**Recommendation: keep `Host tom` on the tailnet name** for an hourly-monitored
+box. It is the path that already survived the unplug unattended, it does not
+depend on a DHCP lease or on Tom's wifi coming back with the *expected* address,
+and it is measurably faster to connect. The cost is one dependency — the control
+plane — and that is acceptable because the tunnel is direct when both ends are on
+the same LAN, so a control-plane outage does not break an established path.
+
+Two things to keep, though:
+
+- **The outside view must not use it.** `scripts/tom-watch-remote.sh` pings
+  `192.168.1.24` over the LAN, which is correct: if Tom is down, so is its
+  tailscaled, so a tailnet ping tells you nothing extra and adds a second thing
+  that can be the fault.
+- **Keep a LAN alias as the fallback.** `Host tom-wired` currently points at
+  `192.168.1.23`, which is dead now the cable is out; a `tom-lan` →
+  `192.168.1.24` alias with `IPQoS none` is the useful second door.
+
+**Forensic cost worth knowing:** because `ssh tom` is Tailscale SSH, its sessions
+appear in Tom's journal as `tailscaled` / `ssh-session(sess-...)`, not as sshd
+sessions with a source IP in `who`. That is exactly why the eight sessions
+bracketing the 10:30 resets took a `--remote-ip=` extraction to attribute.
+
+## The `sysrq` pstore test — authorised, not yet run
+
+The owner authorised the one-off crash test on 2026-11-01. **It has not been run,
+and it is intentionally waiting**, because a second agent on jason is actively
+polling Tom over Tailscale SSH (370 sessions in 45 minutes, one every ~6 s,
+probing `eth0` state and NFS mount options). Rebooting Tom underneath that would
+corrupt its investigation as well as ours.
+
+Pre-test state captured at 11:07 so the test can run the moment it goes quiet:
+
+```text
+boot_id           76a0c0764f7743c5b40d3f5ae105074f
+uptime            30 min, since 10:32:55
+wifi-only from   2026-11-01 10:32:58   (eth0 DOWN)
+guard deployed   40bea58576824c49f898dfe25ad84d73
+cmdline.txt      console=serial0,115200 console=tty1 root=PARTUUID=4c26bfdf-02
+                 rootfstype=ext4 fsck.repair=yes rootwait
+                 cfg80211.ieee80211_regdom=AU ds=nocloud;... panic=15
+kernel.panic     15          kernel.panic_on_rcu_stall  1
+ramoops          using 0x10000@0xb000000, ecc: 0 (config.txt has ramoops-pi5)
+pstore           /sys/fs/pstore empty, /var/lib/systemd/pstore empty
+```
+
+`panic=15` and `dtoverlay=ramoops-pi5` are both confirmed still in place, so a
+result will be meaningful.
+
+**After the crash: read `/sys/fs/pstore` *and* `/var/lib/systemd/pstore`
+immediately.** `systemd-pstore` runs early in boot and moves any record out of
+`/sys/fs/pstore`, so by the time an ssh session exists the file may already have
+moved — checking only `/sys/fs/pstore` would produce a false "no record".
+
+### The run, as one sequence — do not improvise it
+
+Written out because the two things that go wrong under time pressure are already
+known: reading only `/sys/fs/pstore`, and treating the dropped ssh as a failure.
+
+**0. Prove the test is meaningful before triggering it.** Abort if any line is
+missing:
+
+```bash copy Copy 0. pre-flight (abort on anything missing)
+ssh tom 'grep -o "panic=[0-9]*" /boot/firmware/cmdline.txt; \
+         cat /proc/sys/kernel/panic; cat /proc/sys/kernel/panic_on_rcu_stall; \
+         sudo dmesg | grep "ramoops:"'
+```
+
+Expect `panic=15`, `15`, `1`, `ramoops: using 0x10000@0xb000000, ecc: 0`.
+
+**0b. The quiet gate — check it immediately before triggering, and every time.**
+This is a gate, not a note. The test is authorised and queued; it runs only when
+nobody else is working on the box. **There are three states, not two**, and the
+third one outranks the test entirely.
+
+```bash copy Copy 0b. quiet gate — run this immediately before step 3
+c=$(ssh -o IPQoS=none tom-lan 'journalctl --since "-5 min" --no-pager | grep -c "remote-ip=100.95.54.82"')
+u=$(ssh -o IPQoS=none tom-lan 'journalctl --since "-5 min" --no-pager -o cat \
+     | grep "starting non-pty command" | grep -o "remote-ip=[0-9.]*" | sort -u \
+     | grep -v "remote-ip=100.95.54.82" | tr "\n" " "')
+[ -n "$u" ] && { echo "PROVENANCE: unknown tailnet peer(s) in last 5 min:$u"; exit 0; }
+[ "$c" -gt 0 ] && { echo "held: other agent active ($c sessions in 5 min)"; exit 0; }
+echo "gate open: clear to run"
+```
+
+Three outcomes, three different responses:
+
+| outcome | what it means | what to do |
+| --- | --- | --- |
+| `gate open` | nobody else on the box | run the sequence |
+| `held: other agent active` | jason, the known agent, is probing — a scheduling conflict | one line in the report, retry next check, do not ask permission again |
+| `PROVENANCE:` | a peer that is **not** `100.95.54.82` | **stop and treat it as a finding, not a delay.** Identify it (`tailscale status`), read what it ran (`--cmd=`), and report it before anything else |
+
+The third state exists because an unquiet box that is *not* us is a different kind
+of event: an unknown peer on Tom while we are about to reboot it is a security
+question, and reporting it as "held: other agent active" would quietly attribute a
+stranger's traffic to our own tooling.
+
+**Limitation, stated so it is not mistaken for coverage:** this gate watches
+Tailscale SSH only. It is the primary route in, but an sshd login would not appear
+in it — if a reset ever correlates with unexplained activity, check `last -n 5` as
+well as the journal.
+
+**1. Open a second session you are not using**, so a failed panic still leaves a
+way in: `ssh tom 'sleep 900'` in the background. Be honest about its limit — it
+travels the same wlan0 the panic may disturb, so it protects against a wedged
+panic, not against wifi failing to return.
+
+**2. Note the boot id you are leaving.** `ssh tom 'cat /proc/sys/kernel/random/boot_id'`
+
+**3. Trigger.**
+
+```bash copy Copy 3. trigger the panic
+ssh tom 'sudo sh -c "echo 1 > /proc/sys/kernel/sysrq; echo c > /proc/sysrq-trigger"'
+```
+
+The ssh session **will** drop (`Broken pipe`, exit 255). **That is success, not
+failure** — the box is panicking.
+
+**4. Wait for the new boot.** It is not instant: `panic=15` waits 15 s, then a cold
+boot lands in ~30 s, and wlan0 may come up **without an IPv4 lease** — in which
+case `wifi-guard` fixes it ~2 min in. Allow 4 minutes before calling it stuck.
+
+```bash copy Copy 4. wait for the new boot id
+for i in $(seq 1 48); do sleep 5; \
+  id=$(ssh -o ConnectTimeout=4 -o IPQoS=none tom-lan 'cat /proc/sys/kernel/random/boot_id' 2>/dev/null) \
+  && [ "$id" != "<OLD_ID>" ] && { echo "new boot: $id"; break; }; done
+```
+
+**5. Read pstore before anything else, both locations.** This is the step that
+gets forgotten, and the one that decides the answer:
+
+```bash copy Copy 5. the actual measurement
+ssh tom 'sudo ls -la /sys/fs/pstore/ /var/lib/systemd/pstore/; \
+         sudo cat /sys/fs/pstore/* 2>/dev/null | head -40; \
+         sudo cat /var/lib/systemd/pstore/*/* 2>/dev/null | head -40'
+```
+
+**6. Archive immediately if anything exists** — the next panic wipes the record,
+and `systemd-pstore` may clear it:
+
+```bash copy Copy 6. archive the record
+ssh tom 'sudo tar czf /tmp/pstore-$(date +%H%M).tgz /sys/fs/pstore /var/lib/systemd/pstore'
+scp -o IPQoS=none tom:/tmp/pstore-*.tgz .amp/in/artifacts/
+```
+
+**7. Read the panic in the previous boot's journal**, confirming it was our sysrq
+and not a spontaneous reset:
+
+```bash copy Copy 7. the panic itself
+ssh tom 'journalctl -b -1 --no-pager | tail -30'
+```
+
+**8. Clear the record** so the next boot's "is pstore non-empty" check means
+something, and say in the report that you cleared it.
+
+### The discriminator
+
+- **A record present** → the panic path works end to end, and only *wedged*
+  panics differ; the next investigation can trust pstore on stall boots.
+- **No record with a clean panic** → the region does not survive on this board.
+  pstore is then dead weight: remove `dtoverlay=ramoops-pi5`, stop checking it,
+  and say so here rather than leaving the question open again.
+
+## Standing consequence: Tailscale SSH leaves almost no session trail
+
+Not a footnote — it has already cost time. Because `Host tom` is Tailscale SSH
+rather than sshd, sessions appear in Tom's journal as `tailscaled` /
+`ssh-session(sess-...)` and **do not appear in `who`, `last`, or `auth.log`** with
+their source. Attributing the eight sessions that bracketed the 10:30 resets took
+extracting `--remote-ip=` and `--remote-user=` from the `starting non-pty command`
+lines.
+
+**Where to look:** `journalctl -b <n> | grep "starting non-pty command"` and read
+`--remote-ip=` (the peer's tailnet IP — map it with `tailscale status`) and
+`--cmd=` (what it actually ran). `who` will show only real sshd sessions, so an
+empty `who` does **not** mean nobody was on the box.
+
+**The rule that follows, which is the point:** *any audit of Tom starts from the
+journal, not from login records.* `who`, `last`, and `auth.log` are not evidence
+of absence on this box — they are evidence about sshd only, and the primary route
+in bypasses sshd entirely. So "nobody was logged in when it reset" is not a
+finding anyone can make from `who`; it is a conclusion that has to come from the
+journal, or not be drawn at all.
+
+Any future "who was on Tom when it reset" question starts there.
 
 ## Deliberately not doing
 
