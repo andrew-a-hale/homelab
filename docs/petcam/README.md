@@ -115,10 +115,17 @@ Top of `petcam.sh`: capture/stream resolution, fps, bitrates.
 Top of `petcam-detect.py`: `MIN_CONF`, `MOTION_*`, `HEARTBEAT_S`,
 `KEEP_PER_CAT`, `LOG_KEEP_DAYS`, `HARVEST_SAMPLING_RATE`.
 (No `THROTTLE_S` anymore — detections always update the latest shot.)
-`ORANGE_*`/`GRAY_MAX_SAT`/`ORANGE_FRAC` remain for `--checknames` (legacy hue
-classifier) but naming now comes from the 2-class model.
+`ORANGE_*`/`GRAY_MAX_SAT`/`ORANGE_FRAC` drive the hue classifier: naming comes
+from the 2-class model when a fine-tune is loaded, else the hue classifier
+(names COCO cats as pancake/willow). `--checknames` regression-checks it.
 
 ## Model Fine Tuning
+
+**Status 2026-10-28:** training corpus wiped (archived on Jason at
+`~/petcam-train/archive/training-2026-10-28/`) and base yolov8n (COCO) is live
+while data re-accumulates. Note the base model detects only ~12% of cat
+appearances on this camera — the fine-tune is what makes detection work.
+See `complete/model-reset-base-yolo-2026-10-28.md`.
 
 Training runs on the gaming rig (Jason, RTX 3070) — never PyTorch on Tom.
 Full procedure in `skills/petcam-retrain/SKILL.md`.

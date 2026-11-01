@@ -24,7 +24,7 @@ boxes is plenty for yolov8n on one fixed camera angle. Training takes seconds.
 
 ## Data (already collected by the detector)
 
-- `tom@192.168.1.24:~/petcam/training/{images,labels}/` — YOLO pairs (class 0 =
+- `tom@tom.tailad1015.ts.net:~/petcam/training/{images,labels}/` — YOLO pairs (class 0 =
   pancake, class 1 = willow). Confident detections are auto-labeled by the
   2-class model; names (`_willow`/`_pancake`) may still ride in the filename
   for the legacy hue-classifier corpus. Rejected near-misses are saved as
@@ -49,17 +49,19 @@ system Python 3.14 has no torch wheels — don't).
 
 1. Score known cat frames and a cat-free frame with the new model vs `.bak` —
    run the detector's decode via `importlib` from `petcam-detect.py` on the Pi
-   (`spec_from_file_location("pd", "/home/tom/petcam-detect.py")`).
-2. `ssh tom@192.168.1.24 'python3 ~/petcam-detect.py --selftest'`
+   (`spec_from_file_location("pd", "/home/tom/projects/tom/scripts/petcam-detect.py")`).
+   Monkeypatch `pd.harvest`/`pd.log_raw` to a no-op so A/B scoring doesn't
+   pollute the tolabel queue.
+2. `ssh tom@tom.tailad1015.ts.net 'python3 ~/petcam-detect.py --selftest'`
 3. Watch the gallery + `/log` for a couple of real detections.
 
 ## Roll back
 
 ```bash
-ssh tom@192.168.1.24 'cp ~/petcam/model/yolov8n.onnx.bak ~/petcam/model/yolov8n.onnx'
+ssh tom@tom.tailad1015.ts.net 'cp ~/petcam/model/yolov8n.onnx.bak ~/petcam/model/yolov8n.onnx'
 # then restart the detector:
-ssh tom@192.168.1.24 'pkill -f "petcam-detect[.]py$"; sleep 1;
-  setsid python3 /home/tom/petcam-detect[.]py >>/tmp/petcam-detect.log 2>&1 < /dev/null &'
+ssh tom@tom.tailad1015.ts.net 'pkill -f "petcam-detect[.]py$"; sleep 1;
+  setsid python3 /home/tom/projects/tom/scripts/petcam-detect[.]py >>/tmp/petcam-detect.log 2>&1 < /dev/null &'
 ```
 
 ## Gotchas
@@ -72,6 +74,9 @@ ssh tom@192.168.1.24 'pkill -f "petcam-detect[.]py$"; sleep 1;
 - The ONNX decoder auto-detects output shape: COCO-84 (base yolov8n), a
   1-class fine-tune, or a 2-class (pancake/willow) fine-tune. Training
   labels use class 0 = pancake, 1 = willow.
+- The detector lives in the git checkout (`/home/tom/projects/tom/scripts/petcam-detect.py`),
+  not `/home/tom/` — a stale path here once killed the detector and failed to
+  restart it. Cron re-launches it within 2 min regardless (`crontab -l` on Tom).
 - Killing/restarting the detector from a command that literally contains
   `petcam-detect.py` self-matches `pkill -f`; use the bracketed pattern
   `petcam-detect[.]py` in anything on the same command line.

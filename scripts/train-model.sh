@@ -4,7 +4,7 @@
 #   EPOCHS=50 scripts/train-model.sh   # optional override (default 100)
 set -euo pipefail
 
-PI=tom@192.168.1.24
+PI=tom@tom.tailad1015.ts.net
 WORK="$HOME/petcam-train"
 YOLO="$WORK/.venv/bin/yolo"
 EPOCHS=${EPOCHS:-100}
@@ -60,6 +60,6 @@ scp "$WORK/runs/petcam/weights/best.onnx" "$PI:~/petcam/model/yolov8n.onnx.new"
 ssh "$PI" 'cp ~/petcam/model/yolov8n.onnx ~/petcam/model/yolov8n.onnx.bak &&
     mv ~/petcam/model/yolov8n.onnx.new ~/petcam/model/yolov8n.onnx &&
     pkill -f "petcam-detect[.]py$"; sleep 1
-    setsid python3 /home/tom/petcam-detect[.]py >>/tmp/petcam-detect.log 2>&1 < /dev/null &'
+    setsid python3 /home/tom/projects/tom/scripts/petcam-detect[.]py >>/tmp/petcam-detect.log 2>&1 < /dev/null &'
 echo "pushed + detector restarted. verify against known shots, else roll back:"
 echo "  ssh $PI 'cp ~/petcam/model/yolov8n.onnx.bak ~/petcam/model/yolov8n.onnx'"

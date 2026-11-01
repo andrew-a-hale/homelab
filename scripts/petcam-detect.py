@@ -268,7 +268,11 @@ def pass_once(net):
     labels = []
     keep = []
     for b, cls in dets:
-        cat = CLASS_NAME.get(cls, "cat")
+        # base COCO model (cls not in CLASS_NAME): name by fur colour
+        cat = CLASS_NAME.get(
+            cls,
+            NAME.get(classify(img[max(b[1], 0) : b[3], max(b[0], 0) : b[2]])[0], "cat"),
+        )
         log_raw(f"detect class={cls} -> {cat}")
         # No throttle: a detection always updates the latest shot for that cat.
         # KEEP_PER_CAT=1 already keeps storage to one file per cat, so throttling
