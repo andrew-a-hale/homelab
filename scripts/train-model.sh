@@ -27,8 +27,28 @@ for lbl in data-src/labels/*.txt; do
     stem=$(basename "$lbl" .txt)
     [ -f "data-src/images/$stem.jpg" ] || rm -f "$lbl"
 done
+
+# Only human-verified labels train the model: pairs named at /label (cat name in
+# the filename), _neg rejects, or stems marked reviewed at /review. Auto-labeled
+# colour guesses never reach training unverified — hue breaks under lighting.
+verified() {
+    case "$1" in
+        *_neg | *_pancake | *_willow) return 0 ;;
+    esac
+    grep -qxF "$1" data-src/reviewed.txt 2>/dev/null
+}
+dropped=0
+for img in data-src/images/*.jpg; do
+    [ -e "$img" ] || continue
+    stem=$(basename "$img" .jpg)
+    if ! verified "$stem"; then
+        rm -f "$img" "data-src/labels/$stem.txt"
+        dropped=$((dropped + 1))
+    fi
+done
+[ "$dropped" -eq 0 ] || echo "dropped $dropped unverified auto-labeled pairs (verify them at /review)"
 n=$(ls data-src/images/*.jpg 2>/dev/null | wc -l)
-[ "$n" -gt 4 ] || { echo "only $n labeled images - label more on /label first"; exit 1; }
+[ "$n" -gt 4 ] || { echo "only $n verified images - label at /label and verify at /review first"; exit 1; }
 
 # 2. 80/20 train/val split, pairs kept together
 rm -rf data && mkdir -p data/{train,val}/{images,labels}

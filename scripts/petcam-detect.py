@@ -58,10 +58,21 @@ def classify(box):
     return "gray", orange, gray  # two-cat house: not orange -> willow
 
 
+def propose_name(cls, img, box):
+    """name suggestion for a detected box: the fine-tune's class when the model
+    knows pancake/willow, else a hue guess (base COCO has no identity classes).
+    Hue is lighting-fragile — suggestions are advisory; names are decided by
+    humans at /label and /review."""
+    if cls in CLASS_NAME:
+        return CLASS_NAME[cls]
+    x1, y1, x2, y2 = box
+    return NAME.get(classify(img[max(y1, 0) : y2, max(x1, 0) : x2])[0], "unknown")
+
+
 last_harvest = 0.0
 
 
-def harvest(img, top, box=None):
+def harvest(img, top, box=None, cls=None):
     """keep near-miss frames (0.1 <= top < MIN_CONF) + YOLO proposal box, for /label"""
     global last_harvest
     if not (0.1 <= top < MIN_CONF):
@@ -77,14 +88,11 @@ def harvest(img, top, box=None):
     stem = os.path.join(TOLABEL, f"{ts}_top={top:.2f}")
     cv2.imwrite(stem + ".jpg", img)
     if box:
-        name = NAME.get(
-            classify(img[max(box[1], 0) : box[3], max(box[0], 0) : box[2]])[0],
-            "unknown",
-        )
+        name = propose_name(cls, img, box)
         with open(stem + ".txt", "w") as f:
             f.write(
                 " ".join(str(v) for v in box) + " " + name + "\n"
-            )  # box + name proposal
+            )  # box + name suggestion
 
 
 def detect(net, img, roi=None):
@@ -124,7 +132,8 @@ def detect(net, img, roi=None):
     src = "full" if roi is None else "motion=" + ",".join(str(v) for v in roi)
     log_raw(f"scan {src} top={top:.2f} min={MIN_CONF}")
     if scores.size:
-        cx, cy, bw, bh = preds[int(scores.argmax()), :4]
+        ai = int(scores.argmax())
+        cx, cy, bw, bh = preds[ai, :4]
         harvest(
             img,
             top,
@@ -134,6 +143,7 @@ def detect(net, img, roi=None):
                 ox + int((cx + bw / 2) / scale),
                 oy + int((cy + bh / 2) / scale),
             ),
+            int(classes[ai]),
         )
     keep = np.where(scores >= MIN_CONF)[0]
     boxes, confs, clses = [], [], []
@@ -328,7 +338,7 @@ def selftest():
     # harvest must receive the FULL frame paired with full-frame boxes (bug: crop+full coords)
     cap = []
     real_harvest = harvest
-    globals()["harvest"] = lambda i, t, b=None: cap.append((i.shape[:2], b))
+    globals()["harvest"] = lambda i, t, b=None, c=None: cap.append((i.shape[:2], b))
     detect(net, np.full((480, 640, 3), 114, np.uint8), roi=(100, 100, 200, 200))
     globals()["harvest"] = real_harvest
     assert cap and cap[0][0] == (480, 640), f"harvest got cropped frame {cap}"
@@ -389,7 +399,7 @@ if __name__ == "__main__":
         cv2.imwrite(stem + ".jpg", img)
         if dets:
             (x1, y1, x2, y2), cls = dets[0]
-            name = CLASS_NAME.get(cls, "cat")
+            name = propose_name(cls, img, (x1, y1, x2, y2))
             with open(stem + ".txt", "w") as f:
                 f.write(f"{x1} {y1} {x2} {y2} {name}\n")
             print(f"captured {stem} box={x1},{y1},{x2},{y2} name={name}", flush=True)

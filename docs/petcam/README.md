@@ -71,15 +71,27 @@ Then kill each process once and watch cron revive it within 2 min.
 - Training data: `~/petcam/training/` contains YOLO pairs (`images/` + `labels/`).
   Labels use class `0 = pancake`, `1 = willow`. Auto-saved confident detections
   are written by the detector; near-miss frames queue in `~/petcam/tolabel/` for
-  hand-labeling on the site at `/label`.
+  hand-labeling on the site at `/label`. Auto-labels come from the hue
+  classifier while a base COCO model is deployed — hue breaks under lighting
+  (backlit pancake reads gray; warm lamps read willow orange), so those labels
+  are suggestions until verified at `/review`.
 - Labeling actions on `/label`:
-  - **save** (with cat selected) writes an approved box to training with the
-    chosen class id.
+  - **save** requires an explicit cat (`cat=pancake|willow`, server-enforced) and
+    writes an approved box to training with that class id; the name travels in
+    the filename. "save · suggested name" applies the displayed suggestion —
+    which is a colour hint, not a decision.
   - **reject** saves the frame as a **negative** (empty label file) so YOLO
     learns "no cat here".
   - **delete** removes corrupt/error frames entirely (no training entry).
   - `/live` has a **Capture** button that snapshots the current 1 fps still,
     runs YOLO, and queues it with a proposed box + cat name.
+- `/review` audits the labeled corpus before a retrain: every pair with its box
+  and class drawn, per-box colour stats, and actions to flip the class, remove a
+  box, mark the frame negative, delete the pair, or mark it reviewed. Color-flag
+  disagreements sort first (advisory only — the hint never sets a label).
+  `~/petcam/training/reviewed.txt` (one stem per line) records what the owner
+  verified. `train-model.sh` trains **only** on verified pairs: reviewed stems,
+  `/label`-named pairs, and `_neg` rejects — unverified auto-labels are dropped.
 - `petcam-detect.py --checknames` regression-checks the legacy hue classifier
   over the named corpus; `--selftest` covers classifier + label math + empty frame.
 
@@ -121,11 +133,14 @@ from the 2-class model when a fine-tune is loaded, else the hue classifier
 
 ## Model Fine Tuning
 
-**Status 2026-10-28:** training corpus wiped (archived on Jason at
-`~/petcam-train/archive/training-2026-10-28/`) and base yolov8n (COCO) is live
-while data re-accumulates. Note the base model detects only ~12% of cat
-appearances on this camera — the fine-tune is what makes detection work.
-See `complete/model-reset-base-yolo-2026-10-28.md`.
+**Status 2026-11-01:** 2-class fine-tune live, trained on `/review`-verified
+labels (val mAP50 0.77; on the reviewed truth it names 73/81 boxes correctly vs
+the old hue pipeline's 32/81). See `complete/retrain-2026-11-01.md` and
+`complete/review-ui-2026-11-01.md`. Historical: the corpus was wiped
+2026-10-28 (archived on Jason at `~/petcam-train/archive/training-2026-10-28/`)
+and base yolov8n (COCO) — which detects only ~12% of cat appearances on this
+camera — ran while data re-accumulated. See
+`complete/model-reset-base-yolo-2026-10-28.md`.
 
 Training runs on the gaming rig (Jason, RTX 3070) — never PyTorch on Tom.
 Full procedure in `skills/petcam-retrain/SKILL.md`.
@@ -135,6 +150,9 @@ Full procedure in `skills/petcam-retrain/SKILL.md`.
 - Trigger: after the `/label` queue is worked through and misses remain, or
   `--checknames` reports hue-classifier disagreements. ~50–200 labeled boxes is
   plenty for yolov8n on one (or a few) camera angles.
+- **Verify labels at `/review` first** (2026-11-01): auto-labels carry
+  colour-classifier errors, and `train-model.sh` drops any pair that is not
+  human-verified (`reviewed.txt`, `/label` names, `_neg` rejects).
 - Run: `cd ~/projects/tom && EPOCHS=100 scripts/train-model.sh`
   - pulls pairs via rsync (drops 0-byte / orphan pairs),
   - 80/20 split (deterministic), fine-tunes `yolov8n` at `imgsz=640`,

@@ -34,6 +34,11 @@ boxes is plenty for yolov8n on one fixed camera angle. Training takes seconds.
 
 ## Train + push
 
+Only human-verified pairs train: label at `/label` (name travels in the
+filename), verify auto-labeled frames at `https://petcam.andrewahale.com/review`
+(they land in `training/reviewed.txt`), and `train-model.sh` drops everything
+else — unverified colour-classifier guesses never reach training.
+
 ```bash
 cd ~/projects/tom
 EPOCHS=100 scripts/train-model.sh
