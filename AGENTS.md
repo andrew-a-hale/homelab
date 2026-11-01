@@ -23,7 +23,7 @@ Jellyfin is behind a secure password.
 Website is public, but the Petcam is behind Cloudflare SSO.
 qBittorrent is network only and has a strict whitelist.
 
-Jason (Gaming Rig) does YOLO model fine tuning for the Petcam and is temporarily the network storage.
+Jason (Desktop) does YOLO model fine tuning for the Petcam and is temporarily the network storage.
 
 Rose (Laptop) uses jellyfin with TV in place of the Google Streamer TV solution temporarily.
 
@@ -44,3 +44,8 @@ When decisions are made we need to update relevant README.md files for the proje
 ## Bootstrap
 
 The homelab must be simple to bootstrap at any time. If the Raspberry Pi dies it should be very simple to move to Jason or Rose.
+
+## Amp
+
+Do not use ORBS. Only use the runner to connect to Jason to ssh into Tom.
+
