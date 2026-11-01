@@ -275,11 +275,26 @@ recovery path. If the deployed guard is broken or missing, copy
 `scripts/wifi-guard.sh` from that branch to `/usr/local/bin/` — do not reach for a
 `bak-*`. The older copies are for understanding history only.
 
-**Deployment is copy-to-`/usr/local/bin`, and nothing else.** Tom's own checkout
-at `/home/tom/projects/tom` is a stale clone sitting on `master` and is **neither
-authoritative nor current** — its `scripts/wifi-guard.sh` is an old 55-line
-version. Do not diff against it or "fix" a mismatch there; the only comparison
-that means anything is repo ↔ `/usr/local/bin/wifi-guard.sh`.
+**Deployment is by copying files, and it lands in two places — not one.** Verified
+against the crontabs rather than assumed:
+
+| runs on Tom | path | started by |
+| --- | --- | --- |
+| `wifi-guard.sh` | `/usr/local/bin/wifi-guard.sh` | tom's cron, `*/2`, via sudo |
+| `petcam.sh`, `petcam-detect.py` | `/home/tom/projects/tom/scripts/` | tom's cron, `*/2` and `@reboot` |
+| `tom-trace.sh`, `tom-kmsg.sh` | `/home/tom/projects/tom/scripts/` | root's cron, `@reboot` |
+| `train-model.sh`, `tom-watch-remote.sh` | **not Tom** — they run on jason | manual |
+
+**The trap, stated correctly:** Tom's checkout at `/home/tom/projects/tom` is on
+`master` at an old commit and is **git-stale**, but it is **the live deploy path
+for four of the five scripts that run on Tom**. So "it is a stale clone, ignore
+it" is exactly the wrong conclusion — overwriting or pruning that directory takes
+out the petcam pipeline and both crash samplers. Its stale `wifi-guard.sh` (an old
+55-line copy) is simply unused, because cron runs the `/usr/local/bin` one.
+
+**Compare per file, never by git state:** `md5sum
+/home/tom/projects/tom/scripts/<file>` against the repo. Git age on that clone
+tells you nothing about what is running.
 
 **They match by hand, not by deployment.** `scripts/wifi-guard.sh` in the repo and
 `/usr/local/bin/wifi-guard.sh` on Tom are copied across manually — there is no
