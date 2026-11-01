@@ -27,9 +27,9 @@ MODEL = os.path.expanduser("~/petcam/model/yolov8n.onnx")
 
 HARVEST_SAMPLING_RATE = 0.25
 
-MIN_CONF = 0.4
+MIN_CONF = 0.3  # detection confidence (knob: raise if furniture gets "detected"). Was 0.4; lowered 2026-11-01 when tiny curled willow scored 0.42 — measured +1 false positive across 109 hand-made negatives at 0.3.
 NAME = {"gray": "willow", "orange": "pancake"}  # coat label -> cat
-KEEP_PER_CAT = 1  # per label: newest 1 kept (newest = "latest")          # detection confidence (knob: raise if furniture gets "detected")
+KEEP_PER_CAT = 1  # per label: newest 1 kept (newest = "latest")
 INPUT = 640  # YOLO input size
 CAT = 15  # COCO class index of "cat"
 CLASS_NAME = {0: "pancake", 1: "willow"}  # 2-class fine-tune class ids
@@ -363,8 +363,8 @@ def selftest():
             "HARVEST_SAMPLING_RATE": 0.0,
         }
     )
-    harvest(np.full((100, 100, 3), 100, np.uint8), 0.3, (10, 10, 50, 50))
-    side = [f for f in os.listdir(d) if f.endswith("_top=0.30.txt")]
+    harvest(np.full((100, 100, 3), 100, np.uint8), 0.2, (10, 10, 50, 50))
+    side = [f for f in os.listdir(d) if f.endswith("_top=0.20.txt")]
     assert side and open(os.path.join(d, side[0])).read().startswith("10 10 50 50 "), (
         os.listdir(d)
     )
