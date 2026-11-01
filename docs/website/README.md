@@ -14,9 +14,11 @@ visitor → Cloudflare edge → tunnel "andrewahale" → cloudflared (on Tom) �
   built binary `andrewhale-web`, listens on `127.0.0.1:8080`. Serves `/` and `/blog`
   (HTML), `/static/*`, and `/static/dht.json` (live office temp/humidity from a DHT
   sensor on the Pi's GPIO). Also serves `petcam.andrewahale.com` (Host-routed):
-  `/` = detection snapshots gallery, `/live` = HLS stream, `/shots/*` = snapshot
-  files (`/home/tom/petcam/shots/`), `/hls/*` = stream segments (`/dev/shm/petcam`,
-  produced by `~/projects/tom/scripts/petcam.sh`).
+  `/` = detection snapshots gallery, `/live` = HLS stream, `/log` = detection
+  log, `/label` = near-miss labeling queue, `/review` = training-corpus label
+  audit, `/shots/*` = snapshot files (`/home/tom/petcam/shots/`), `/hls/*` =
+  stream segments (`/dev/shm/petcam`, produced by
+  `~/projects/tom/scripts/petcam.sh`).
 - **Tunnel**: `cloudflared tunnel run andrewahale` on Tom. Locally-managed
   — ingress lives in `/home/tom/.cloudflared/config.yaml` on the Pi
   (andrewahale.com + www + petcam → :8080, jellyfin.andrewahale.com → :8096,
