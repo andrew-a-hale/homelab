@@ -96,6 +96,8 @@ Then kill each process once and watch cron revive it within 2 min.
   and class drawn, per-box colour stats, and actions to flip the class, remove a
   box, mark the frame negative, delete the pair, or mark it reviewed. Color-flag
   disagreements sort first (advisory only — the hint never sets a label).
+  Colour stats are cached in `training/review-stats.json` (invalidated per
+  frame by image/label mtime), so a load only decodes new or changed frames.
   `~/petcam/training/reviewed.txt` (one stem per line) records what the owner
   verified. `train-model.sh` trains **only** on verified pairs: reviewed stems,
   `/label`-named pairs, and `_neg` rejects — unverified auto-labels are dropped.
