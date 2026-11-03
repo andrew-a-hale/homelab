@@ -29,7 +29,7 @@ HARVEST_SAMPLING_RATE = 0.25
 
 MIN_CONF = 0.3  # detection confidence (knob: raise if furniture gets "detected"). Was 0.4; lowered 2026-11-01 when tiny curled willow scored 0.42 — measured +1 false positive across 109 hand-made negatives at 0.3.
 NAME = {"gray": "willow", "orange": "pancake"}  # coat label -> cat
-KEEP_PER_CAT = 1  # per label: newest 1 kept (newest = "latest")
+KEEP_SHOTS = 20  # newest N snapshots kept on disk; the gallery shows the newest 10 and the rest sit in the pool so manual deletes backfill it
 INPUT = 640  # YOLO input size
 CAT = 15  # COCO class index of "cat"
 CLASS_NAME = {0: "pancake", 1: "willow"}  # 2-class fine-tune class ids
@@ -234,12 +234,11 @@ def save(img, boxes, labels):
         cv2.imwrite(path, img)
         print("saved", path, label, flush=True)
         log_raw(f"{label} {ts}_{label}.jpg")
-    for label in set(labels):
-        kept = sorted(
-            (f for f in os.listdir(SHOTS) if f.endswith(f"_{label}.jpg")), reverse=True
-        )
-        for old in kept[KEEP_PER_CAT:]:
-            os.remove(os.path.join(SHOTS, old))
+    kept = sorted(
+        (f for f in os.listdir(SHOTS) if f.endswith(".jpg")), reverse=True
+    )
+    for old in kept[KEEP_SHOTS:]:
+        os.remove(os.path.join(SHOTS, old))
 
 
 prev_gray = None
@@ -284,9 +283,10 @@ def pass_once(net):
             NAME.get(classify(img[max(b[1], 0) : b[3], max(b[0], 0) : b[2]])[0], "cat"),
         )
         log_raw(f"detect class={cls} -> {cat}")
-        # No throttle: a detection always updates the latest shot for that cat.
-        # KEEP_PER_CAT=1 already keeps storage to one file per cat, so throttling
-        # only made the gallery stale. Training pairs still accumulate (see README).
+        # No throttle: a detection always saves a snapshot. KEEP_SHOTS=20 bounds
+        # storage and feeds the gallery window (the web app shows the newest 10,
+        # the rest are a pool that manual deletes backfill from). Training pairs
+        # still accumulate (see README).
         labels.append(cat)
         keep.append(b)
     if keep:

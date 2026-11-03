@@ -60,14 +60,17 @@ Then kill each process once and watch cron revive it within 2 min.
 ## Data contract
 
 - Shots: `~/petcam/shots/YYYY-MM-DD_HH-MM-SS_<cat>.jpg` — the filename is the
-  whole gallery contract (timestamp + label). Newest 1 kept per cat.
+  whole gallery contract (timestamp + label). The detector keeps the newest 20
+  on disk (`KEEP_SHOTS`, 2026-11-03: was newest-1-per-cat); the gallery shows
+  the newest 10, and a manual delete on the page backfills the view from the
+  pool instead of losing history.
 - Log: `~/petcam/detections.log` — one timestamped line per processing pass
   (scan scores vs threshold, classifier fracs vs thresholds, saved/updated latest).
   Rolling 2-week window. `/log` shows it newest-first, 200 lines/page.
-- Throttle: removed. A detection now always updates the latest shot for that cat.
-  `KEEP_PER_CAT=1` keeps storage to one file per cat, so the throttle only made
-  the gallery stale. (Historical: `/dev/shm/petcam/throttle.json` and the web
-  app's reset-on-delete are no longer used.)
+- Throttle: removed. A detection now always saves a snapshot;
+  `KEEP_SHOTS=20` bounds storage and the gallery window. (Historical:
+  `/dev/shm/petcam/throttle.json` and the web app's reset-on-delete are no
+  longer used.)
 - Training data: `~/petcam/training/` contains YOLO pairs (`images/` + `labels/`).
   Labels use class `0 = pancake`, `1 = willow`. Auto-saved confident detections
   are written by the detector; near-miss frames queue in `~/petcam/tolabel/` for
@@ -125,8 +128,8 @@ tail -50 ~/petcam/logs/rpicam.log
 
 Top of `petcam.sh`: capture/stream resolution, fps, bitrates.
 Top of `petcam-detect.py`: `MIN_CONF`, `MOTION_*`, `HEARTBEAT_S`,
-`KEEP_PER_CAT`, `LOG_KEEP_DAYS`, `HARVEST_SAMPLING_RATE`.
-(No `THROTTLE_S` anymore — detections always update the latest shot.)
+`KEEP_SHOTS`, `LOG_KEEP_DAYS`, `HARVEST_SAMPLING_RATE`.
+(No `THROTTLE_S` anymore — detections always save a snapshot.)
 `ORANGE_*`/`GRAY_MAX_SAT`/`ORANGE_FRAC` drive the hue classifier: naming comes
 from the 2-class model when a fine-tune is loaded, else the hue classifier
 (names COCO cats as pancake/willow). `--checknames` regression-checks it.
