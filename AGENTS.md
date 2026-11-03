@@ -49,3 +49,7 @@ The homelab must be simple to bootstrap at any time. If the Raspberry Pi dies it
 
 Do not use ORBS. Only use the runner to connect to Jason to ssh into Tom.
 
+## Deployment
+
+Deploying code for this project should be using `ssh` with `git pull` and make for the website.
+For the model retraining it should `scp` the new model directly to Tom from Jason.

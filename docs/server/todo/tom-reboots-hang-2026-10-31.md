@@ -270,10 +270,16 @@ guard that **cannot detect anything** on the current iwd stack and would sit
 silent while wifi was dead. The third is the live file, so it restores nothing.
 
 So recovery is **fix-forward**, and the premise is different from "keep a backup
-in case": the current file plus the repo copy on `tom-hang-capture` is the
-recovery path. If the deployed guard is broken or missing, copy
-`scripts/wifi-guard.sh` from that branch to `/usr/local/bin/` — do not reach for a
+in case": the current file plus the repo copy on `master` is the recovery path. If
+the deployed guard is broken or missing, copy `scripts/wifi-guard.sh` from master
+(`/home/andy/projects/tom` on jason) to `/usr/local/bin/` — do not reach for a
 `bak-*`. The older copies are for understanding history only.
+
+> **Historical note:** this text used to say "the repo copy on `tom-hang-capture`".
+> That branch was deleted on 2026-11-01: it was an ancestor of `master` with zero
+> unique commits and no remote counterpart, so the work had always been on
+> `master`. Any older note referring to `tom-hang-capture` should be read as
+> "`master`".
 
 **Deployment is by copying files, and it lands in two places — not one.** Verified
 against the crontabs rather than assumed:
@@ -315,10 +321,31 @@ Dlink-9C045E connection.autoconnect no` **and** `AutoConnect=false` in
 
 `scripts/wifi-guard.sh` is rewritten for the NetworkManager+iwd stack so the
 Ethernet cable can come out and wifi can be the sole uplink again. It is on
-`tom-hang-capture` and **installed**: `/usr/local/bin/wifi-guard.sh` and
+`master` (never on a feature branch — see the note below) and **installed**:
+`/usr/local/bin/wifi-guard.sh` and
 `scripts/wifi-guard.sh` are both `fd7ff77d…`, tom's crontab still runs it every
 2 minutes, and the previous copy is kept at
 `/usr/local/bin/wifi-guard.sh.bak-20261031` for rollback.
+
+### No review boundary: the guard went from working tree to Tom
+
+Worth stating plainly rather than leaving implied. This work landed **directly on
+`master`** — there was never a feature branch with the guard rewrite on it (the
+`tom-hang-capture` branch was an ancestor of `master` with zero unique commits and
+was deleted on 2026-11-01). Since the guard is **deployed by copying the working
+tree** to `/usr/local/bin/wifi-guard.sh`, the sequence was:
+
+```text
+edit working tree → copy to /usr/local/bin → Tom now runs it → later, a commit
+```
+
+There was **no review, no test gate and no diff step between the rewrite and the
+running copy** on the machine whose only recovery path it is. That is not something
+to undo now — the guard is working and has recovered the box unattended three
+times — but it is the reason "the deployed copy must match the repo" is a standing
+check rather than an assumption, and the reason the `bak-*` inventory exists. If
+this guard is ever rewritten again, the diff should be reviewed **before** the
+copy, not after Tom is already depending on it.
 
 ### Tombstone: the SCAN-FAILED path is gone, do not resurrect it
 
@@ -442,6 +469,28 @@ the jason NFS/ufw notes) into the same commit. That was authorised — the
 alternative was leaving a false claim about the guard in the tree — but if those
 edits were wanted as their own commit, split them out of `f7ae105` rather than
 assuming they appeared by accident.
+
+### Standing check: name the branch and its relation to origin, every check
+
+Added 2026-11-01 after this drifted silently. For hours the work was described as
+living on `tom-hang-capture`, while the checkout was actually on `master` and that
+branch was an ancestor with zero unique commits — believed by everyone, verified by
+nobody. A branch name that is assumed rather than printed is the same failure class
+as a check that reads clean.
+
+So every report states both, not just the md5:
+
+```bash copy Copy branch identity
+cd /home/andy/projects/tom
+git branch --show-current
+git rev-list --count origin/master..HEAD   # ahead
+git rev-list --count HEAD..origin/master   # behind
+git status --porcelain                     # uncommitted work
+```
+
+If "ahead" is non-zero, local work exists that is neither pushed nor visible to
+anyone else. If `git status` is not clean, the deployed copy may already differ
+from what was reviewed. Say either explicitly rather than leaving it implied.
 
 ### Standing check: the installed copy must match the repo
 
@@ -694,6 +743,13 @@ reboots without syncing and ext4's delayed allocation hands back zeros.
 seconds; the tee is the source for everything before it.** Never conclude "silent
 death" from the tee alone. A NUL tail is the tell that a burst was lost.
 
+**Updated 2026-11-01 14:13 — that is only true for slow panics.** For an *instant*
+panic (sysrq at 14:13:01 → reboot 15 s later) journald lost it too: `-b -1` had
+**zero** panic lines and the tee had none, while pstore had the whole stack. So the
+real rule is: **pstore first, then journald, then the tee** — a fast panic is only
+ever in pstore, a slow one (tens of seconds of stall) is in journald as well, and
+the tee's tail is lossy either way.
+
 **1. `/var/log/tom-kmsg.log` — primary evidence for the run-up.** Microsecond
 timestamps, and the per-boot header tells you which section is the dying boot:
 
@@ -717,17 +773,63 @@ found nothing:
 **2. `/sys/fs/pstore` — and archive before anything else touches it.** If a dump
 exists, `sudo tar czf` it out first, then read it; a panic wipes the next one.
 
-**But an empty pstore is not evidence of a silent death.** On this box pstore has
-never produced a record, including for a real panic (`b63e886a`, 2026-11-01
-10:30:49) — see "pstore: registered, correctly sized, and still silent". So read
-this step as *check, and if empty say so without concluding anything*. Also check
-`/var/lib/systemd/pstore/` as well as `/sys/fs/pstore/`: `systemd-pstore` runs at
-boot and **moves** any record out of `/sys/fs/pstore` before you can look, so
-checking only the latter after a reboot reports "empty" even when a dump exists.
+**But an empty pstore needs interpreting, not just reporting — say which of two
+things it means, every time.** The plumbing is proven: the 2026-11-01 14:13 sysrq
+test produced a 27248-byte `dmesg-ramoops-0`. So after the next *organic stall*:
+
+- **No record, and there was a panic** → that is **evidence for the lock-contention
+  hypothesis**: the dump runs on a CPU that has to take locks, and our fault is a
+  CPU wedged holding them, so the write never completes. Report it as support for
+  that hypothesis, not as "pstore produced nothing" and not as a null result. It is
+  also the only way the hypothesis gets tested, so write down which it was.
+- **No record, and no panic either** (a silent death with nothing in journald or the
+  tee) → that is the genuine null case; say so plainly and move on.
+
+Also check `/var/lib/systemd/pstore/` as well as `/sys/fs/pstore/`: `systemd-pstore`
+runs at boot and **moves** any record out of `/sys/fs/pstore` before you can look.
+This is not theoretical — at 14:13 the first location was empty and the record was
+in the second, and checking only `/sys/fs/pstore` would have produced a confident,
+wrong "no record".
+
+**Three outcomes, and the report must name which one occurred.** This is now our
+only measurement of the lock-contention hypothesis, so an unlabelled "pstore empty"
+throws the measurement away:
+
+| observed after a reset | what it means |
+| --- | --- |
+| **record present, stall panic** | **the hypothesis is falsified** — a wedged CPU did reach the dump path. Worth more than the other two combined; say so and re-open the mechanism question |
+| **no record, panic happened** | support for lock contention: the dump needed locks the wedged CPU held |
+| **no record, no panic** | a genuinely silent death — the null case; say so plainly, it is not evidence either way |
 
 **3. `scripts/tom-watch-remote.sh` log (`/tmp/tom-watch.log`) — the outside view.**
 This is the only source that says **how long** Tom was unreachable, because Tom's
 own loggers stop when it dies. Gives the exact down window.
+
+**3b. Was the NFS mount up at the moment of death?** NFS is a closed negative
+(above), and it must stay *measured* rather than assumed, so answer this explicitly
+on every reset instead of implying it from a post-boot `findmnt`.
+
+There are two different questions and it is easy to answer the wrong one:
+
+| question | how to answer | what it does **not** tell you |
+| --- | --- | --- |
+| Is the mount up **now**? | `mountpoint -q /mnt/storage && echo up` (or `findmnt -no SOURCE /mnt/storage`) | nothing about the moment of death — the boot remounted it |
+| Was it up **at death**? | the dying boot's own journal, and jason's side | that it stayed up during the outage |
+
+At-death evidence, in order:
+
+1. **Dying boot journal:** `journalctl -b -1 | grep -iE "nfs|mnt-storage|server not responding"`. A clean tail with no NFS messages means the mount was quiet to the end; `server not responding` or a `mnt-storage.mount` event in the last seconds means it moved before the death.
+2. **jason's side** (the exporter, `192.168.1.181`): `systemctl is-active nfs-server`, `exportfs -v`, `nfsstat -s` counters, and `journalctl -u nfs-server --since <death-10min>` on jason — it keeps logging after Tom dies, which is the whole point.
+3. **The preserved `/tmp/cablewatch.log` on jason** — 6-second samples of an actual read, but **it ends at 14:06 on 2026-11-01**, when that poller was killed.
+
+**The gap this exposes:** closing NFS as a suspect used that poller's 8827 samples,
+and killing it removed the instrument. From 2026-11-01 14:07 there is **no
+continuous NFS read record on this box**. So the next reset cannot repeat the
+measurement that closed the hypothesis — it can only be checked against journald and
+jason's server side. If the negative needs re-measuring, a minimal probe has to be
+re-added deliberately (owner's call, and it must not be a 6-second `ls` on the
+subsystem under investigation — that is a confounder, which is why the original was
+retired).
 
 **4. `/var/log/tom-trace.log` — corroboration only.** 15 s resolution, so it
 cannot see the final seconds; use it for the run-up (was I/O or wifi moving
@@ -1078,6 +1180,11 @@ commands themselves are innocuous.
 
 ### pstore: registered, correctly sized, and still silent
 
+> **Resolved later, 2026-11-01 14:13.** A deliberate sysrq panic produced a
+> 27248-byte record, so the plumbing works — see "The `sysrq` pstore test".
+> The question left open here narrowed rather than closed: the *stall* panic still
+> wrote nothing, which is now evidence for lock contention rather than a mystery.
+
 This is the one open question that got worse, not better. The `b63e886a` panic was
 exactly the case ramoops exists for, and it produced nothing.
 
@@ -1196,13 +1303,85 @@ appear in Tom's journal as `tailscaled` / `ssh-session(sess-...)`, not as sshd
 sessions with a source IP in `who`. That is exactly why the eight sessions
 bracketing the 10:30 resets took a `--remote-ip=` extraction to attribute.
 
-## The `sysrq` pstore test — authorised, not yet run
+## The `sysrq` pstore test — RUN 2026-11-01 14:13, and the dump path works
 
-The owner authorised the one-off crash test on 2026-11-01. **It has not been run,
-and it is intentionally waiting**, because a second agent on jason is actively
-polling Tom over Tailscale SSH (370 sessions in 45 minutes, one every ~6 s,
-probing `eth0` state and NFS mount options). Rebooting Tom underneath that would
-corrupt its investigation as well as ours.
+Run after the gate opened at 14:12:55 (0 sessions in 5 min, having stopped the
+orphaned watcher at 14:07). Pre-flight passed on all four: `panic=15` in
+`cmdline.txt`, `kernel.panic=15`, `panic_on_rcu_stall=1`, `ramoops: using
+0x10000@0xb000000`.
+
+| step | time | result |
+| --- | --- | --- |
+| trigger `sysrq c` | 14:13:01 | ssh died with exit 255 — success, as expected |
+| old boot `76a0c076` ended | 14:12:55 | 3 h 39 m 57 s, no faults before it |
+| new boot `67e59294` | 14:13:27 | panic→boot gap ~26 s (15 s panic + cold boot) |
+| guard fired | 14:14:01.716 | `wlan0 has no IPv4` — the predicted post-reset behaviour |
+| guard recovered | 14:14:26.368 | 24.7 s, unattended |
+| new boot header | 14:13:29 | **exactly one**, +2 to +5 s of boot start — post-panic capture clean |
+
+**The record exists**, at `/var/lib/systemd/pstore/dmesg-ramoops-0`, 27248 bytes:
+
+```text
+Panic#1 Part1
+...
+[13205.522089]  sysrq_handle_crash+0x24/0x38
+[13205.526109]  __handle_sysrq+0x98/0x1a0
+[13205.529866]  write_sysrq_trigger+0xc8/0xe0
+[13205.571188] SMP: stopping secondary CPUs
+```
+
+**`/sys/fs/pstore` was empty and `/var/lib/systemd/pstore` had it** — exactly the
+trap this ticket warned about, caught in the act. Checking only the first location
+would have produced a confident, wrong "no record".
+
+Archived before clearing: 8465-byte gzip at `/tmp/pstore-capture-1413.tgz` on Tom
+and `.amp/in/artifacts/pstore-capture-1413.tgz` on jason
+(md5 `63c078e2d6fb4a38365e1d0b90b7701f`). The live record was then cleared so a
+future "is pstore non-empty" check means something.
+
+### The discriminator, answered — and the inversion it exposed
+
+**The dump path works end to end on this board.** ramoops registers, the panic
+writes, the record survives the reset, and systemd-pstore archives it. pstore is
+*not* dead weight, and `dtoverlay=ramoops-pi5` stays.
+
+But this test inverted the read order we established this morning:
+
+| panic | journald | kmsg tee | pstore |
+| --- | --- | --- | --- |
+| RCU stall, 10:30:49 (slow, ~50 s) | **had it** | lost the tail (NULs) | nothing |
+| sysrq, 14:13:01 (instant) | **nothing** (`-b -1`: 0 panic lines) | nothing | **had it** |
+
+So it is not "pstore is unreliable" — it is **which panic**. A panic that takes
+tens of seconds gives journald time to flush; a panic that goes from sysrq to
+reboot in 15 s does not, and only the RAM-resident recorder catches it.
+
+**The caveat that still matters:** the stall panic at 10:30:49 wrote nothing to
+pstore, and this test does not explain that. The most likely reason is
+mechanical — the dump runs on a CPU that has to take locks, and our fault is a CPU
+wedged holding them, so the write may not complete. That is a hypothesis, not a
+finding, and it means **pstore's usefulness for the real failure is still
+unproven even though its plumbing is now proved.** Do not assume the next stall
+panic will leave a record.
+
+**Revised read order after a reset:** pstore first (it is the only source that has
+ever captured a panic nothing else got), then `journalctl -b -1` (best for slow
+panics), then the tee (run-up only), then the watcher (how long it was down).
+
+**Why this order can never be simplified back to one source.** Which sink catches a
+panic depends on **how long the panic takes to reach the reboot**:
+
+- A **fast** panic (sysrq, or any panic that goes to reboot in ~15 s) gives
+  journald no time to flush its buffer. Measured 14:13:01: journald had **zero**
+  panic lines, the tee had none, pstore had the whole stack.
+- A **slow** panic (an RCU stall that runs tens of seconds) gives journald time to
+  write, and may leave pstore nothing — either because the dump could not complete
+  against a wedged CPU, or for reasons not yet known.
+
+So each source is blind to the other's case. Anyone who "tidies" this to a single
+path stops seeing one whole class of death, and will not notice, because the
+report still looks complete — it just quietly has nothing in it. That is the same
+failure shape as the guard log read clean across midnight.
 
 Pre-test state captured at 11:07 so the test can run the moment it goes quiet:
 
@@ -1245,8 +1424,12 @@ Expect `panic=15`, `15`, `1`, `ramoops: using 0x10000@0xb000000, ecc: 0`.
 
 **0b. The quiet gate — check it immediately before triggering, and every time.**
 This is a gate, not a note. The test is authorised and queued; it runs only when
-nobody else is working on the box. **There are three states, not two**, and the
-third one outranks the test entirely.
+nobody and nothing else is working on the box. **The same gate applies to any test
+that perturbs Tom** — a reboot, a restart of the wifi or camera path, anything that
+resets counters — because a second observer or an orphaned poller corrupts the
+measurement whether or not it is a person.
+
+There are **three states, not two**, and the third one outranks the test entirely.
 
 ```bash copy Copy 0b. quiet gate — run this immediately before step 3
 c=$(ssh -o IPQoS=none tom-lan 'journalctl --since "-5 min" --no-pager | grep -c "remote-ip=100.95.54.82"')
@@ -1263,8 +1446,22 @@ Three outcomes, three different responses:
 | outcome | what it means | what to do |
 | --- | --- | --- |
 | `gate open` | nobody else on the box | run the sequence |
-| `held: other agent active` | jason, the known agent, is probing — a scheduling conflict | one line in the report, retry next check, do not ask permission again |
+| `held: other agent active` | jason, the known peer, is probing — a scheduling conflict | one line in the report, retry next check, do not ask permission again |
 | `PROVENANCE:` | a peer that is **not** `100.95.54.82` | **stop and treat it as a finding, not a delay.** Identify it (`tailscale status`), read what it ran (`--cmd=`), and report it before anything else |
+
+**The fourth check: is the traffic even a person?** Sessions alone do not tell you
+whether something worth protecting is running. Before any perturbing test, also
+run the orphan check from "How to spot an orphan":
+
+```bash copy Copy 0b-ii. orphan check — is anything still polling Tom?
+ps -eo pid,ppid,etime,args | grep -E "watch|poll|probe|capture" | grep -v grep
+ls -l /tmp/*.sh 2>/dev/null | tail -5
+```
+
+An orphan under `systemd --user` with a growing `/tmp` log produces exactly the
+same journal signature as a person, and will hold the gate forever — that cost 15
+hours on 2026-11-01. If the count is non-zero, find the source before concluding
+"someone is working on it".
 
 The third state exists because an unquiet box that is *not* us is a different kind
 of event: an unknown peer on Tom while we are about to reboot it is a security
@@ -1312,7 +1509,9 @@ ssh tom 'sudo ls -la /sys/fs/pstore/ /var/lib/systemd/pstore/; \
 ```
 
 **6. Archive immediately if anything exists** — the next panic wipes the record,
-and `systemd-pstore` may clear it:
+and `systemd-pstore` may clear it. **Copy it off Tom first: `/tmp` on the box does
+not survive a reboot**, and the 2 Nov capture was lost from Tom that way (the jason
+copy is the only one left).
 
 ```bash copy Copy 6. archive the record
 ssh tom 'sudo tar czf /tmp/pstore-$(date +%H%M).tgz /sys/fs/pstore /var/lib/systemd/pstore'
@@ -1331,11 +1530,15 @@ something, and say in the report that you cleared it.
 
 ### The discriminator
 
-- **A record present** → the panic path works end to end, and only *wedged*
-  panics differ; the next investigation can trust pstore on stall boots.
-- **No record with a clean panic** → the region does not survive on this board.
-  pstore is then dead weight: remove `dtoverlay=ramoops-pi5`, stop checking it,
-  and say so here rather than leaving the question open again.
+- **A record present** → the panic path works end to end. **Observed 2026-11-01
+  14:13: record present, 27248 bytes.** Plumbing proved.
+- **No record with a clean panic** → the region does not survive on this board, and
+  pstore is dead weight that should be removed from the monitoring story.
+
+The remaining question is narrower than it was, and worth stating precisely: the
+plumbing works, but the *stall* panic at 10:30:49 still produced nothing, so
+pstore's usefulness for the actual fault is unproven. Do not treat "pstore empty"
+as evidence either way until a stall panic leaves a record or is explained.
 
 ## Standing consequence: Tailscale SSH leaves almost no session trail
 
@@ -1351,6 +1554,83 @@ lines.
 `--cmd=` (what it actually ran). `who` will show only real sshd sessions, so an
 empty `who` does **not** mean nobody was on the box.
 
+### Correction 2026-11-01 14:05: the "second agent" was an orphaned watcher
+
+The sessions attributed above to "another agent on jason" are, on the evidence,
+a **leftover monitoring loop**, not a live investigation:
+
+```text
+PID 2527375, parent systemd --user (2269) — no agent session above it
+started 23:05:07 on 2026-10-31, ran 15 hours, one ssh every ~6 s
+script  /tmp/cablewatch.sh   log /tmp/cablewatch.log (8827 lines, 573 KB, still growing)
+```
+
+Its sibling `/tmp/remount-on-cable-pull.sh` did the cable-pull remount and
+**exited at 01:15:49** ("remount verified on Wi-Fi"). Only the watcher was left
+behind, and it is what the crash-test quiet gate has been reading as "other agent
+active". So the gate has been holding against a process nobody is reading —
+a false positive that would have held the pstore test indefinitely.
+
+**What the watcher recorded, because it turns out to be useful** — an independent
+6-second record of the NFS read path in `/mnt/storage/media`, which the trace
+sampler could not give us:
+
+| time | last sample before the reset |
+| --- | --- |
+| 07:07:41 (reset 07:07:42) | `read=OK:9ms` — **1 s before the reset, the NFS read was healthy** |
+| 10:30:28 then 10:30:35 (reset 10:30:49) | `read=OK:43ms` (a 4× blip), then `OK:11ms` |
+| 10:32:06–10:32:27 (reset 10:32:26) | `read=STALL` four times, ~20 s before that boot died |
+| 01:13:02–01:13:42 (the unplug) | `read=STALL` five times — expected, that is the remount window |
+
+Across 8827 samples there are **30 STALLs and 142 `ssh_failed`**, and all of them
+cluster at the unplug, the resets, and the 84-second boot's run-up. Between them,
+read latency is 4–12 ms for 15 hours straight.
+
+**The NFS hypothesis is now a closed negative, not a weakened one.** For the
+07:07:42 reset the last read before death was `read=OK:9ms` at 07:07:41 — the NFS
+path was working one second before the box died. Across 15 hours the read path sat
+at 4–12 ms with only 30 STALLs in 8827 samples, and every one of them clusters at
+the unplug, the resets, or the 84-second boot's run-up. The 10:32:06–10:32:27
+STALLs come *after* that boot was already degraded, which makes them a symptom —
+the same shape as the camera/i2c messages. **NFS is not the trigger. Do not
+reopen this without a sample showing a stalled read *preceding* a death.**
+
+**Attribution, corrected and then closed.** The earlier finding in this ticket said
+"eight tailscale ssh sessions bracketed both resets, not from this thread", and
+implied an unknown observer. Two separate sources have now been identified, and
+neither is an unknown actor:
+
+1. **The orphaned watcher** (`/tmp/cablewatch.sh`, PID 2527375) — 8690 of the
+   recorded commands across all boots, one every ~6 s. That is the entire
+   49-sessions-per-5-minutes figure. Not a person.
+2. **A petcam session from jason** — the `python3 - <<'EOF'` heredoc, 7 occurrences
+   at `10:28:32`, `10:29:10`, `10:29:21`, `10:32:26`, `11:18:08`, `12:25:54`,
+   `12:27:52`. All `--remote-ip=100.95.54.82` (jason), `--remote-user=andrew.hale003@gmail.com`,
+   uid 1000. Contents are petcam work, captured in the journal:
+   `cp ~/petcam/model/yolov8n.onnx.bak /tmp/bak.onnx && python3 - <<'EOF'` (model
+   comparison), `curl -H "Host: petcam.andrewahale.com" .../review/list >
+   /tmp/revlist.json; python3 - <<EOF` (review queue), and the "bak 2-class
+   opinion" label audit. Matching rsync of `~/petcam/training/` in the same hours.
+   **Nothing since 12:27:52 — zero in any recent hour.**
+
+So the provenance section must not be read as "an unidentified observer was on the
+box". Both sources are accounted for, both are on jason, both are ours in origin,
+and the petcam one is the retrain workflow rather than anything sinister. The
+10:32:26 heredoc began 39 ms before that boot died, but the boot's NFS reads had
+been stalling since 10:32:06 — it was a bystander in a boot already failing.
+
+**How to spot an orphan like this, before attributing traffic to a person:**
+
+1. `ps -eo pid,ppid,etime,args | grep -E "cablewatch|watch|poll"` — look for the script name, not just the protocol.
+2. **Check the parent.** `PPID 2269 = systemd --user` means nothing started it this session; there is no agent or shell above it. A live investigation has a live parent.
+3. **Look in `/tmp`.** Ad-hoc scripts written by an agent land there and outlive the session that wrote them.
+4. **Check whether the log is still growing:** `ls -l <log>` twice, 10 s apart. If it grows and nobody is reading it, it is an orphan.
+5. **Check for a finished sibling.** `remount-on-cable-pull.sh` had already exited at 01:15:49 — when one script of a pair is done, the other is usually leftover.
+
+An orphaned 6-second NFS poller is not a neutral observer: it puts a read on the
+exact subsystem under investigation every 6 seconds. Check for one before blaming
+a person for traffic, and before running any timing-sensitive test.
+
 **The rule that follows, which is the point:** *any audit of Tom starts from the
 journal, not from login records.* `who`, `last`, and `auth.log` are not evidence
 of absence on this box — they are evidence about sshd only, and the primary route
@@ -1359,6 +1639,213 @@ finding anyone can make from `who`; it is a conclusion that has to come from the
 journal, or not be drawn at all.
 
 Any future "who was on Tom when it reset" question starts there.
+
+## Every reset takes Jellyfin down (2026-11-01, found when the owner noticed)
+
+Not a separate bug — a consequence of a hard reset, and it took roughly four hours
+to be noticed because nothing alerts on it.
+
+**Mechanism**, verified at both boots since the resets:
+
+```text
+boot → wlan0 has no IPv4 yet (the guard has not recovered it)
+     → mount.nfs /mnt/storage fails: "Network is unreachable for 192.168.1.181"
+     → jellyfin.service has RequiresMountsFor=/mnt/storage
+     → start job fails as a *dependency* failure, so jellyfin never runs
+     → the mount succeeds a minute later once wifi has an address
+     → nothing retries jellyfin: it stays down until someone starts it
+```
+
+Evidence:
+
+| boot | mount attempted | result | jellyfin |
+| --- | --- | --- | --- |
+| `b63e886a`-successor (10:32:58) | 10:34:01 | failed | `Dependency failed`, never started — down from 10:34 |
+| `67e59294` (14:13:27) | 14:14:01.783 | `Network is unreachable` | `Dependency failed` at 14:14:01 |
+
+On the 14:13 boot the mount attempt at `14:14:01.783` came 25 ms after the guard's
+`nmcli` profile restart at `14:14:01.758` — but the restart was not the cause: wlan0
+had no IPv4 before it, which is why the guard fired at all.
+
+**The dependency is deliberate**, from
+`/etc/systemd/system/jellyfin.service.d/10-wait-for-storage.conf`:
+
+```ini
+[Unit]
+# Do not start Jellyfin until /mnt/storage (NFS from jason) is mounted,
+# otherwise the library scans to empty.
+RequiresMountsFor=/mnt/storage
+After=mnt-storage.mount
+```
+
+and `/etc/fstab` already has `nofail,_netdev`. So the ordering is right but the
+**retry** is missing: `nofail` stops the boot failing, it does not make anything
+come back afterwards.
+
+**Recovery used on 2026-11-01:** `sudo systemctl start jellyfin` once the mount was
+up. Confirmed listening on `:8096`, and reachable through the tunnel —
+`https://jellyfin.andrewahale.com` → `HTTP 302` → `location: jf/web/`. The tunnel
+itself was never down; its log was full of "Unable to reach the origin service",
+which was Jellyfin, not Cloudflare.
+
+**Fix applied 2026-11-01 14:36 — option 1, a cron retry.** Added to tom's crontab,
+with the previous crontab kept at `/home/tom/crontab.backup.20261101-143540`:
+
+```cron
+# Jellyfin comes back after a reset. The NFS mount can fail at boot while wlan0 has
+# no IPv4 yet, which makes jellyfin's RequiresMountsFor a dependency failure that
+# nothing retries. Retry for 6 min, and only start it once the mount is really there.
+@reboot for i in $(seq 1 12); do sleep 30; findmnt -n /mnt/storage >/dev/null 2>&1 && ! systemctl is-active --quiet jellyfin && sudo -n systemctl start jellyfin; systemctl is-active --quiet jellyfin && break; done
+```
+
+Design notes, so a later reader does not "simplify" it wrongly:
+
+- **The `findmnt` guard is load-bearing.** Starting Jellyfin before the mount exists
+  is the exact failure the `RequiresMountsFor` drop-in was written to prevent — it
+  would scan the library to empty. So the retry waits for the mount, not for a
+  timer.
+- **Twelve 30-second attempts**, not one shot at 120 s, because the guard's wifi
+  recovery is not on a fixed schedule: it fires on its own 2-minute cron and takes
+  ~25 s once it does. A single attempt would miss whenever recovery ran late.
+- **It is idempotent** — `! systemctl is-active` means a healthy boot does nothing
+  but sleep once and exit.
+
+Verified rather than assumed: the crontab diff against the backup is exactly the
+four added lines (`15a16,19`), the exact installed line was run with `sleep 30`
+substituted for `sleep 1` after `systemctl stop jellyfin` — Jellyfin went
+`inactive → active`, listening on `:8096`, `/health` `HTTP 302`, and the public URL
+`https://jellyfin.andrewahale.com` returned `HTTP 302` in 0.32 s.
+
+**Still open:** this retries after a *boot*. A reset that does not reboot — a
+guard recovery on a running box — is not covered, and neither is the case where the
+mount drops mid-run. Whether the guard should also start Jellyfin after it recovers
+wifi is an open question for the owner.
+
+The point to keep: **a reset now costs Jellyfin as well as uptime**, and before
+this fix that was invisible unless someone tried to watch something.
+
+## 2026-11-02 — three resets, and pstore caught the stall
+
+Found when the owner asked "any restarts?" three times; the hourly thread had been
+idle. **The lesson is the same one as everything else today: nothing alerts, so a
+quiet report reads as a quiet box.**
+
+| boot | ran | length | how it ended |
+| --- | --- | --- | --- |
+| `67e59294` | 1 Nov 14:13:27 → 2 Nov 10:23 | **20 h 10 m** | **RCU stall → panic, record captured** |
+| `70dbf530` | 2 Nov 10:24:00 → 14:00:05 | 3 h 36 m | silent; died 4 s into a `wifi-guard` run |
+| `2b4cc8de` | 2 Nov 14:00:47 → 14:02:26 | **99 s** | silent; died **2 ms after** the guard logged "recovered" |
+| `5c1062e4` | 2 Nov 14:02:46 → now | running | — |
+
+### The three-way outcome: record + stall panic
+
+`/var/lib/systemd/pstore/dmesg-ramoops-0`, **27261 bytes**, `Panic#1 Part1`:
+
+```text
+[72601.011663] rcu: INFO: rcu_preempt detected stalls on CPUs/tasks:
+[72601.011681] Sending NMI from CPU 2 to CPUs 3:
+[72611.012142] Sending NMI from CPU 2 to CPUs 0:
+[72611.013147] Kernel panic - not syncing: RCU Stall
+[72612.181901] SMP: failed to stop secondary CPUs 3
+```
+
+**This is the falsifying case: a stall panic, on a wedged CPU 3 that could not even
+be stopped, and the dump completed anyway.** So the lock-contention hypothesis — "a
+stall panic cannot write pstore because the wedged CPU holds what the dump needs" —
+**is falsified**. Note also that the stalled CPU moved: the earlier stalls were all
+CPU 3, and this one has NMIs to CPU 3 *and* CPU 0.
+
+Archived before anything else: `/tmp/pstore-capture-1102-1023.tgz` on Tom and
+`.amp/in/artifacts/pstore-capture-1102-1023.tgz` on jason
+(md5 `d4a3eaddffd7e12479938b1a3ec4c6c2`).
+
+**Then what happened on 1 Nov at 10:30:49, where the same class of panic wrote
+nothing?** Unknown, but there is an obvious candidate: **the sysrq test at 14:13 on
+1 Nov may have been the priming write.** Every panic before it produced nothing;
+every panic after it has produced a record. pstore zones initialise on first use, so
+a freshly enabled `dtoverlay=ramoops-pi5` may simply not write until one successful
+dump has initialised them. **Hypothesis, not finding** — the way to test it is to
+disable and re-enable ramoops on a spare board, which we do not have.
+
+### New lead: the wifi profile restart on a *young* boot
+
+Two of these deaths land on a `wifi-guard` recovery, and both were boots younger
+than 110 s:
+
+| recovery | boot age at the time | outcome |
+| --- | --- | --- |
+| 1 Nov 10:32:26.407 | 84 s | **died same second** |
+| 2 Nov 14:02:26.469 | 99 s | **died 2 ms later** |
+| 1 Nov 10:34:26.384 | ~2 min 26 s | survived |
+| 1 Nov 14:14:26.368 | ~2 min | survived |
+| 2 Nov 14:04:27.136 | ~1 min 41 s | survived |
+
+And the 14:00:05 death is a third shape: the guard *started* at 14:00:01.863 and the
+box died 4 s later, before it logged anything — i.e. during the probe phase, not at
+the restart.
+
+So the correlation is sharper than "the profile restart is a suspect": **a recovery
+that runs within roughly the first two minutes of a boot coincides with death
+(2 of 2), while the same recovery on an older boot survives (3 of 3).** That points
+at a freshly-booted wifi stack — driver or firmware not yet settled — rather than at
+`nmcli` itself. Still a correlation across 5 events; do not treat it as causal.
+
+**What this means for the guard:** do not "fix" it by making the restart softer yet.
+The next step is to record, on every guard firing, the boot age, so the 2-of-2
+becomes a real number rather than a small table in a ticket.
+
+## 2026-11-03 — another silent reset, and the solution question
+
+Boot `5c1062e4` ran 2 Nov 14:02:46 → **3 Nov 14:29:02** (24 h 26 m) and died
+silently: no stall, no panic, **no pstore record** (the 27261-byte file left in
+`/var/lib/systemd/pstore` is still the 2 Nov 10:23 one — see the note below).
+
+> **Process failure worth keeping:** that 2 Nov record was archived but never
+> cleared, so a later check cannot tell a stale record from a new one. The ticket
+> already said clear it after archiving; it was not done. Clear it, every time.
+
+**No `wifi-guard` activity in the 55 minutes before the 2 Nov 10:23 stall**, which
+weakens the "guard reload causes the wedge" idea for the big one — the young-boot
+correlation stays a lead, not a cause.
+
+### Is there a solution? Honest answer: not a fix, but a decision
+
+**The fault is in the Broadcom BCM43455 SDIO path, and it is not ours to fix in
+userspace.** Upstream reports match Tom's signature closely:
+
+- `raspberrypi/linux#7528` — Pi 5 client-mode wifi failures on kernel 6.18.39, same firmware family.
+- `openwrt/openwrt#23069` — BCM43455 on Pi 5 enters an unrecoverable state after repeated wifi reloads; **only a power cycle recovers**.
+- `raspberrypi/linux#6270` — `brcmf_proto_bcdc_query_dcmd ... -110` followed by `rcu_preempt detected stalls`, which is Tom's original scan-wedge shape.
+- Ubuntu `#2133877` — Pi 5 network hang with RCU stalls; the governor workaround is already rejected in this ticket.
+
+**There is no update to take.** Installed kernel `6.18.50-1+rpt1` *equals* the
+candidate; `firmware-brcm80211` is `1:20260519`. "Patch and hope" is not available.
+
+So the levers are:
+
+| lever | state | value |
+| --- | --- | --- |
+| `panic_on_rcu_stall=1` | on | turns stall deaths into ~20 s reboots **with a trace**; roughly half the deaths still bypass it |
+| `pstore`/ramoops | working since 1 Nov | the only sink that catches a fast or wedged panic |
+| services self-heal | Jellyfin cron added 1 Nov, proved 2 Nov | a reset now costs ~3 min of Jellyfin, not hours |
+| wifi power save | already `disable` | not a lever |
+| guard reload avoidance | young-boot lead only | do not change the guard on this evidence |
+| `brcmfmac feature_disable=0x82000` | **not tried** | documented workaround for brcmfmac problems, cheap, reversible, needs a reboot |
+| **put the ethernet cable back** | **not done** | removes the whole wifi driver path from the equation — the highest-information single action |
+
+**Recommendation.** The resets are ~1–3 per day and survive every software
+mitigation we can apply, so the question is no longer "how do we fix the driver" but
+"do we keep running the box on a wifi stack that wedges". Reconnecting ethernet is
+the one action that both reduces exposure and tests the hypothesis: if resets stop,
+the fault is wifi-side and the box is stable on wire; if they continue, it is the
+board or its power, and that becomes a hardware decision (PSU swap, then RMA) rather
+than more software.
+
+Caveat to state honestly: resets also occurred on 31 Oct while the cable was in, so
+wired is not proven to be immune — but that evening was full of deliberate reboots
+during deployment, and the only genuinely quiet window (31 Oct 19:30 → 1 Nov 07:07)
+was an 11 h 36 m run on wire that ended in a reset anyway. So the wire test is
+informative but not guaranteed.
 
 ## Deliberately not doing
 

@@ -81,7 +81,10 @@ ssh tom@tom.tailad1015.ts.net 'pkill -f "petcam-detect[.]py$"; sleep 1;
   labels use class 0 = pancake, 1 = willow.
 - The detector lives in the git checkout (`/home/tom/projects/tom/scripts/petcam-detect.py`),
   not `/home/tom/` — a stale path here once killed the detector and failed to
-  restart it. Cron re-launches it within 2 min regardless (`crontab -l` on Tom).
+  restart it. When the path moved (2026-10-27), this skill and `train-model.sh`
+  were fixed but the website's `handleCapture` was missed until the owner hit it
+  (2026-11-01) — when the path moves again, grep **both** repos (`tom` and
+  `andrewahale.com`) for it. Cron re-launches it within 2 min regardless (`crontab -l` on Tom).
 - Killing/restarting the detector from a command that literally contains
   `petcam-detect.py` self-matches `pkill -f`; use the bracketed pattern
   `petcam-detect[.]py` in anything on the same command line.
