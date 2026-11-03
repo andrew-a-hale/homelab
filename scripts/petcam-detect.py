@@ -30,6 +30,7 @@ HARVEST_SAMPLING_RATE = 0.25
 MIN_CONF = 0.3  # detection confidence (knob: raise if furniture gets "detected"). Was 0.4; lowered 2026-11-01 when tiny curled willow scored 0.42 — measured +1 false positive across 109 hand-made negatives at 0.3.
 NAME = {"gray": "willow", "orange": "pancake"}  # coat label -> cat
 KEEP_SHOTS = 20  # newest N snapshots kept on disk; the gallery shows the newest 10 and the rest sit in the pool so manual deletes backfill it
+SAVE_COOLDOWN_S = 120  # min seconds between saved snapshots+training pairs: one firing trigger (a cushion, the TV) must not flood the feed
 INPUT = 640  # YOLO input size
 CAT = 15  # COCO class index of "cat"
 CLASS_NAME = {0: "pancake", 1: "willow"}  # 2-class fine-tune class ids
@@ -205,7 +206,15 @@ def log_raw(line):
         f.writelines(keep)
 
 
+last_save = 0.0
+
+
 def save(img, boxes, labels):
+    global last_save
+    now = time.time()
+    if now - last_save < SAVE_COOLDOWN_S:  # snapshots AND training pairs are rate-limited
+        return
+    last_save = now
     ts = time.strftime("%Y-%m-%d_%H-%M-%S")
     os.makedirs(TRAIN_IMG, exist_ok=True)
     os.makedirs(TRAIN_LBL, exist_ok=True)

@@ -63,7 +63,11 @@ Then kill each process once and watch cron revive it within 2 min.
   whole gallery contract (timestamp + label). The detector keeps the newest 20
   on disk (`KEEP_SHOTS`, 2026-11-03: was newest-1-per-cat); the gallery shows
   the newest 10, and a manual delete on the page backfills the view from the
-  pool instead of losing history.
+  pool instead of losing history. **Deleting a snapshot means "not a cat"** —
+  it also marks the matching training pair a verified negative, so FP cleanup
+  teaches the next retrain (skipped when a sibling snapshot of the frame
+  survives). Saves are rate-limited by `SAVE_COOLDOWN_S` (120 s) so one firing
+  trigger cannot flood the feed.
 - Log: `~/petcam/detections.log` — one timestamped line per processing pass
   (scan scores vs threshold, classifier fracs vs thresholds, saved/updated latest).
   Rolling 2-week window. `/log` shows it newest-first, 200 lines/page.
@@ -128,7 +132,7 @@ tail -50 ~/petcam/logs/rpicam.log
 
 Top of `petcam.sh`: capture/stream resolution, fps, bitrates.
 Top of `petcam-detect.py`: `MIN_CONF`, `MOTION_*`, `HEARTBEAT_S`,
-`KEEP_SHOTS`, `LOG_KEEP_DAYS`, `HARVEST_SAMPLING_RATE`.
+`KEEP_SHOTS`, `SAVE_COOLDOWN_S`, `LOG_KEEP_DAYS`, `HARVEST_SAMPLING_RATE`.
 (No `THROTTLE_S` anymore — detections always save a snapshot.)
 `ORANGE_*`/`GRAY_MAX_SAT`/`ORANGE_FRAC` drive the hue classifier: naming comes
 from the 2-class model when a fine-tune is loaded, else the hue classifier
