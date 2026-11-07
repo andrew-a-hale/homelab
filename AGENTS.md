@@ -6,7 +6,6 @@ It should use the following:
 - Proton VPN
 - Proton Drive
 - Cloudflare Tunnelling
-- go Webserver hosted on the RPi
 
 It is currently hosting a Website: andrewahale.com
 
@@ -16,14 +15,14 @@ Everything should be documented, be agent friendly, and grounded with latest inf
 
 ## Where things run
 
-Tom (Raspberry Pi 5) now runs only the Petcam (camera, YOLO detector, and the web UI behind Cloudflare SSO) plus qBittorrent. Its DHT sensor is unused.
+Tom (Raspberry Pi 5) now runs only the Petcam (camera, YOLO detector, and the web UI behind Cloudflare SSO).
 
 Jellyfin and Website are accessible off the network.
 Jellyfin is behind a secure password.
 Website is public, but the Petcam is behind Cloudflare SSO.
 qBittorrent is network only and has a strict whitelist.
 
-Jason (Desktop) does YOLO model fine tuning for the Petcam and is temporarily the network storage.
+Jason (Desktop) does YOLO model fine tuning for the Petcam.
 
 Rose (Laptop) uses jellyfin with TV in place of the Google Streamer TV solution temporarily.
 
@@ -55,3 +54,7 @@ Do not use ORBS. Only use the runner to connect to Jason to ssh into Tom.
 
 Deploying code for this project should be using `ssh` with `git pull` and make for the website.
 For the model retraining it should `scp` the new model directly to Tom from Jason.
+
+## Research
+
+To research and understand problems, decisions, tasks please use Chrome MCP and Web Search!

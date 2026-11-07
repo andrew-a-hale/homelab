@@ -1,0 +1,20 @@
+[Unit]
+Description=Cloudflare Tunnel (andrewahale)
+After=network-online.target nginx.service
+Wants=network-online.target
+
+[Service]
+User=cloudflared
+Group=cloudflared
+ExecStart=/usr/bin/cloudflared --no-autoupdate --config /etc/cloudflared/config.yaml tunnel run
+Restart=always
+RestartSec=5
+# cloudflared ignores SIGTERM while draining edge connections (stops hung for
+# minutes on restart); it is not worth waiting for a graceful drain here.
+KillSignal=SIGKILL
+TimeoutStopSec=10
+# Proton WireGuard on Ralph is inverted (qBittorrent uid only, Table=off), so
+# cloudflared egresses over the normal route — nothing to bypass.
+
+[Install]
+WantedBy=multi-user.target

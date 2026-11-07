@@ -8,7 +8,7 @@
 | Thing | Where it lives now | Notes |
 |---|---|---|
 | Jellyfin | `jellyfin.service`, port 8096 | config `/var/lib/jellyfin` (95M), libraries: `/mnt/storage/media/{movies,tv}` |
-| Media | **Jason**, `192.168.1.181:/mnt/storage` over NFS4 | 59G total: 12G movies, 47G tv, 61 files. Jason's disk is 1.9T, 4% used |
+| Media | **Ralph** `/srv/media` (was Jason `192.168.1.181:/mnt/storage` over NFS4 — copy verified by checksum and the Jason copy deleted 2026-11-07; `backup` (389M) remains there and the NFS export stays) | 59G total: 12G movies, 47G tv, 61 files |
 | nginx | `:80`, single `sites-enabled/default` | proxies `/jf/` → 8096, `/bt/` → 8081 with basic auth |
 | qBittorrent | `qbittorrent-nox@tom`, `:8081`, bound to `10.2.0.2` | Proton VPN split-tunnel, leak protection via interface binding |
 | Proton VPN | `me.proton.vpn.split_tunneling.service` | plus `/usr/local/bin/cloudflared-bypass.sh` to route cloudflared over the bare ISP |
@@ -59,8 +59,9 @@ house that has a documented history of wifi wedges on Tom. Ralph should be wired
 ### 1. Media onto Ralph — DONE
 59G via USB stick, see
 [`../complete/media-and-jellyfin-2026-11-07.md`](../complete/media-and-jellyfin-2026-11-07.md).
-Jellyfin is installed and its config migrated too. Verify `/srv/media` survives a
-reboot (`nofail` means a missing drive does *not* block boot — check it did).
+Jellyfin is installed and its config migrated too. The Jason source copy was
+verified file-by-file against Ralph (`rsync -c`, 61/61 identical) and deleted
+2026-11-07; only `/mnt/storage/backup` remains on Jason.
 
 ### 2. Jellyfin on Ralph — DONE (pending a human playback test)
 `extra/jellyfin-server` + `jellyfin-web` + `jellyfin-ffmpeg`, 12.4, config migrated
@@ -93,7 +94,11 @@ in [`public-ingress-2026-11-07.md`](public-ingress-2026-11-07.md).
 `tom` name.
 
 ### 7. Demote Tom
-Stop jellyfin, qbittorrent, nginx, proton; keep petcam + ssh + the health cron.
+Stop jellyfin, qbittorrent, proton **and nginx**; keep petcam, ssh and the
+health cron. Playback on Ralph verified by a real watch (Kokuho, 2026-11-07).
+Petcam became a standalone app on Tom (tailnet bind, Ralph nginx in front) so
+Tom no longer needs a web server at all — see
+[`../petcam/complete/standalone-app-2026-11-07.md`](../../petcam/complete/standalone-app-2026-11-07.md).
 Then Tom's hourly hard-reset matters a lot less.
 
 ## Open decisions

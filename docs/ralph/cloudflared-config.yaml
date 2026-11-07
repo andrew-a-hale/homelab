@@ -20,9 +20,10 @@ ingress:
   - hostname: placetime.andrewahale.com
     service: http://127.0.0.1:80
 
-  # The camera and its UI stay on Tom (it reads Tom's local /dev/shm and shots).
+  # Petcam is a standalone app on Tom (tailnet 100.77.132.110:8080); Ralph nginx
+  # fronts it so the tunnel has one origin shape. Tom no longer runs nginx.
   # Every segment therefore hops Tom -> Ralph -> edge.
   - hostname: petcam.andrewahale.com
-    service: http://192.168.1.24:80
+    service: http://127.0.0.1:80
 
   - service: http_status:404

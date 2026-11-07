@@ -24,8 +24,11 @@ headless, reached over SSH and nothing else. Arch base + Guix for packages.
   `ralph` = `100.108.202.106`.
 - **What runs here:** `andrewhale-web`, `nginx`, `cloudflared`, `jellyfin`,
   `dht`, `sshd`, `guix-daemon`. All enabled, all `Restart=always` where relevant.
-- **Tom only runs petcam now** (`petcam.andrewahale.com` is proxied to it over the
-  LAN) plus qBittorrent until the Proton migration.
+- **Tom only runs petcam now** — and petcam is a standalone app there
+  (`petcam.service`, tailnet `100.77.132.110:8080`), reached from this box's
+  nginx only; Tom runs no web server at all. qBittorrent moved here 2026-11-07
+  (see `complete/qbittorrent-vpn-2026-11-07.md`), petcam split out of the
+  website binary 2026-11-07 (see `../petcam/complete/standalone-app-2026-11-07.md`).
 - **LUKS keyslot 0** is the passphrase; **slot 1** is the TPM2 token. If firmware
   settings change, PCR 7 changes, the token stops working and Ralph waits for a
   passphrase at the console. Re-enrol:
@@ -47,7 +50,9 @@ Read them before running; they wipe `/dev/nvme0n1`.
 
 ## Open questions
 
-- qBittorrent + Proton split tunnel: still on Tom, the last service to move.
+- qBittorrent runs here behind Proton WireGuard (`proton0`, `Table=off`, one uid
+  rule — the VPN serves qBit only). Tom's qBit/Proton stack still to be retired
+  in `todo/migration-2026-11-07.md`.
 - Wired ethernet: not available yet. Every public request and every Jellyfin
   stream crosses this one wifi link, and Tom→Ralph measured **0.74 MB/s**.
 - DHT calibration: Ralph reads ~2.8°C cooler than Tom's sensor in the same room.

@@ -1,9 +1,13 @@
 # Pet Cam — from-scratch rebuild
 
-Everything needed to rebuild the pet cam (and the web app) on a wiped Pi.
-Scripts live in `scripts/petcam.sh` and `scripts/petcam-detect.py`; config
-references are in this folder. The website source has its own repo
+Everything needed to rebuild the pet cam on a wiped Pi: the app, the capture
+and detector scripts, the unit, and the config references. All of it is in this
+repo (`petcam/` + `scripts/`). The website source has its own repo
 (`git@github.com:andrew-a-hale/andrewahale.com.git`) — everything else is here.
+
+Petcam used to be one file inside the website binary; since 2026-11-07 it is a
+standalone app, so a petcam change cannot break the public site build
+([`complete/standalone-app-2026-11-07.md`](complete/standalone-app-2026-11-07.md)).
 
 ## What runs where
 
@@ -11,14 +15,13 @@ references are in this folder. The website source has its own repo
 |---|---|---|
 | `petcam.sh` | `~/projects/tom/scripts/petcam.sh` | always-on capture supervisor: 720p@1fps capture → 480p HLS stream + 1fps still; relaunches dead pipeline (60 s backoff if it flaps), logs to `~/petcam/logs/` |
 | `petcam-detect.py` | `~/projects/tom/scripts/petcam-detect.py` | 5 s loop, multi-pass: movement diff → YOLOv8n (2-class: pancake/willow), writes shots + log |
-| `andrewhale-web` | `~/projects/andrewahale.com/web/` | Go binary on 127.0.0.1:8080; host-routes `petcam.andrewahale.com` (gallery `/`, `/live`, `/log`, `/delete`) |
-| cloudflared | `/usr/local/bin/cloudflared` | tunnel `andrewahale`, ingress in `cloudflared-config.yaml` |
-| nginx | :80 | LAN aliases `tom/jf/` (Jellyfin), `tom/bt/` (qBittorrent + basic auth) |
-| cron | see `crontab.txt` | `@reboot` starts + 2-min watchdogs for all four services |
+| `petcam` (app) | `~/projects/tom/petcam/` → `/etc/systemd/system/petcam.service` | standalone Go binary (stdlib only, templates embedded), gallery `/`, `/live`, `/log`, `/label`, `/review`; binds **tailnet only** `100.77.132.110:8080` |
+| nginx (Ralph) | `/etc/nginx/conf.d/petcam.conf` | `petcam.andrewahale.com` → `100.77.132.110:8080`; the tunnel points at Ralph nginx, so Tom runs **no** web server |
+| cron | see `crontab.txt` | capture + detector `@reboot` + 2-min watchdogs (the app is a systemd unit now) |
 
 ## Rebuild steps
 
-1. **Packages**: `sudo apt install ffmpeg nginx python3-opencv python3-numpy`
+1. **Packages**: `sudo apt install ffmpeg python3-opencv python3-numpy`
    (`rpicam-apps` ships with Raspberry Pi OS). Install Go (tarball to
    `/usr/local/go` — the website builds with it).
 2. **cloudflared**: binary at `/usr/local/bin/cloudflared`, then
@@ -30,19 +33,18 @@ references are in this folder. The website source has its own repo
    DNS: `cloudflared tunnel route dns andrewahale <hostname>` for each ingress
    hostname. Edge setup (Access on `petcam.andrewahale.com`) is in
    `docs/website/README.md`.
-3. **Website**: `git clone git@github.com:andrew-a-hale/andrewahale.com.git
-   ~/projects/andrewahale.com && cd ~/projects/andrewahale.com/web &&
-   /usr/local/go/bin/go build -o andrewhale-web .` (run from that dir —
-   template paths are relative).
+3. **Petcam app**: `git clone git@github.com:andrew-a-hale/tom.git
+   ~/projects/tom && cd ~/projects/tom/petcam && make`, then
+   `cp petcam.service /etc/systemd/system/ && systemctl enable --now petcam`.
+   `BIND`/`PORT` live in the unit. No nginx on Tom: Ralph proxies to the tailnet.
 4. **Petcam scripts**: copy `scripts/petcam.sh` + `scripts/petcam-detect.py`
    to `~/`, `chmod +x`, then `mkdir -p ~/petcam/model ~/petcam/shots`.
 5. **Model**: `~/petcam/model/yolov8n.onnx` (not in git — export it anywhere,
    e.g. Colab: `yolo export model=yolov8n.pt format=onnx imgsz=640`). The
    detector auto-detects COCO-84, 1-class, or 2-class (pancake/willow) outputs.
-6. **nginx**: `nginx-site.conf` → `/etc/nginx/sites-enabled/default`.
-   `/bt/` needs `sudo htpasswd -c /etc/nginx/htpasswd tom`. Jellyfin needs
-   `BaseUrl=/jf` in its config; qBittorrent WebUI must bind **127.0.0.1:8081**
-   only (nginx adds the auth — leaving it open bypasses login entirely).
+6. **Ralph side**: `docs/ralph/nginx-ralph.conf` → `/etc/nginx/conf.d/`, and
+   the tunnel ingress in `docs/ralph/cloudflared-config.yaml`. `nginx-site.conf`
+   here is historical (Tom used to serve `/jf/` and `/bt/`; both moved to Ralph).
 7. **Cron**: `crontab crontab.txt` (from this folder).
 
 ## Verify
@@ -50,12 +52,15 @@ references are in this folder. The website source has its own repo
 ```bash
 rpicam-still --list-cameras            # one imx708 (two once the NoIR lands)
 python3 ~/projects/tom/scripts/petcam-detect.py --selftest  # classifier + label math + empty-frame
-curl -s -H "Host: petcam.andrewahale.com" http://127.0.0.1:8080/shots.json
-curl -s -H "Host: petcam.andrewahale.com" http://127.0.0.1:8080/log | head
+curl -s http://100.77.132.110:8080/shots.json   # from Ralph; no Host header needed
+curl -s http://100.77.132.110:8080/log | head
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: petcam.andrewahale.com" \
+     http://127.0.0.1/            # on Ralph: through nginx, the tunnel's origin
 ls /dev/shm/petcam/index.m3u8          # HLS stream alive
 ```
 
-Then kill each process once and watch cron revive it within 2 min.
+Then kill each process once: systemd revives the app, cron revives capture and
+`petcam-detect.py` within 2 min.
 
 ## Data contract
 

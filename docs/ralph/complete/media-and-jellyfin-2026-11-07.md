@@ -73,10 +73,24 @@ until nginx exists on Ralph.
 ## Not done
 
 - Human playback test (network path on wifi is the open risk)
-- nginx on Ralph (`/jf/`, `/bt/`, the Go site)
-- qBittorrent + Proton split tunnel
-- Cloudflare tunnel cutover — still unknown where it runs
-- Tom still running jellyfin/qbittorrent/nginx; nothing demoted yet
+- nginx on Ralph (`/jf/`, `/bt/`, the Go site) — DONE
+- qBittorrent + Proton split tunnel — DONE, see `qbittorrent-vpn-2026-11-07.md`
+- Cloudflare tunnel cutover — DONE, cloudflared runs on Ralph under systemd
+- Tom demoted 2026-11-07 (jellyfin/qbittorrent/nginx/proton stopped, crons
+  pruned; petcam + ssh + health/wifi-guard remain)
+
+## Source copy on Jason deleted (2026-11-07)
+
+After the USB transfer, the Jason source (`/mnt/storage/media`, 59G) was
+verified against Ralph with `rsync -rnic` — 61/61 files checksum-identical —
+then deleted. `/mnt/storage/backup` (389M) and Jason's NFS export remain; Tom
+still mounts the export and nothing on it depends on `media`.
+
+Jellyfin's libraries reference `/mnt/storage/media/{movies,tv}` and resolve
+through the `media → /srv/media` symlink on Ralph — leave that symlink in place.
+Both Jellyfin and qBittorrent now carry `RequiresMountsFor=/srv/media`, so a
+missing USB drive (`nofail` in fstab) means they refuse to start rather than
+serve empty libraries.
 
 ## Side finding: Guix on a foreign distro has no CA bundle
 
