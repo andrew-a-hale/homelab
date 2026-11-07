@@ -60,7 +60,8 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
   protection) and set the web login (tom/pancake). Torrent state is not
   preserved either: re-add what you still want.
 - **Proton VPN** — `wg-quick@proton0` with `/etc/wireguard/proton0.conf`
-  (secret, see below).
+  (secret, see below), enabled at boot, plus `proton-guard.timer` (every 5 min) to
+  re-raise `proton0` if it ever drops.
 - **Cloudflared** — `docs/ralph/cloudflared.service`, config at
   `/etc/cloudflared/config.yaml` (shape in `docs/ralph/`).
 - **Tailscale** — `tailscale up`, then in the admin console: disable key
