@@ -18,6 +18,23 @@ the uplink, which is exactly why the tailnet name is the default.
 
 // NOTE: I've bought a Dell Optiplex and a 4TB HDD to attach to the Dell. We will install ubuntu on it.
 
+> **Superseded 2026-11-07.** The OptiPlex is `ralph`, it runs **Arch + Guix**
+> (not Ubuntu), and it is now the always-on server and public gateway. Jellyfin,
+> the media library (58G, on the 4TB USB drive), the website and the Cloudflare
+> tunnel all live there. See [`../ralph/`](../ralph/).
+>
+> **Tom's job now:** petcam only — camera, `petcam.sh`, `petcam-detect.py`, its
+> YOLO model, and the second instance of the Go web app that serves
+> `petcam.andrewahale.com`. Jellyfin was disabled on Tom 2026-11-07 and `/jf/`
+> removed from its nginx. qBittorrent (`/bt/`, LAN only) is still on Tom pending
+> the Proton VPN migration.
+>
+> Tom's DHT sensor reads ~3°C off versus Ralph's in the same room; Ralph's is
+> the one now published. The `static/dht.json` committed in the website repo is
+> stale by design — the live file is `/srv/dht/dht.json` on Ralph.
+>
+> The analysis below is kept as the reasoning that led to buying the OptiPlex.
+
 ## Current state (2026-10-21)
 
 - Desktop `jason` (Ryzen 5 7600X, 30GB, gaming rig, /mnt/games): runs Jellyfin +

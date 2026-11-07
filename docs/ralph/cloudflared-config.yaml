@@ -1,0 +1,28 @@
+# ingress for tunnel "andrewahale" — runs on Ralph (the always-on gateway).
+# Copy to /etc/cloudflared/config.yaml; credentials are copied by hand from Tom
+# and never live in this repo.
+protocol: http2
+tunnel: 5b7e3976-7429-495d-beee-45d5213a0798
+credentials-file: /etc/cloudflared/5b7e3976-7429-495d-beee-45d5213a0798.json
+
+ingress:
+  # Jellyfin directly, not via nginx: its BaseUrl is /jf, and pointing this at
+  # nginx:80 would serve the website to anyone asking jellyfin.* for "/".
+  - hostname: jellyfin.andrewahale.com
+    service: http://127.0.0.1:8096
+
+  # Through nginx, so /static/dht.json resolves to the live USB sensor reading
+  # instead of the stale file baked into the Go app's static dir.
+  - hostname: andrewahale.com
+    service: http://127.0.0.1:80
+  - hostname: www.andrewahale.com
+    service: http://127.0.0.1:80
+  - hostname: placetime.andrewahale.com
+    service: http://127.0.0.1:80
+
+  # The camera and its UI stay on Tom (it reads Tom's local /dev/shm and shots).
+  # Every segment therefore hops Tom -> Ralph -> edge.
+  - hostname: petcam.andrewahale.com
+    service: http://192.168.1.24:80
+
+  - service: http_status:404

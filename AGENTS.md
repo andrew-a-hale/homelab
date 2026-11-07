@@ -16,7 +16,7 @@ Everything should be documented, be agent friendly, and grounded with latest inf
 
 ## Where things run
 
-Tom (Raspberry Pi 5) is the server: Jellyfin, qBittorrent, website, Petcam, Office Temp and Humidity.
+Tom (Raspberry Pi 5) now runs only the Petcam (camera, YOLO detector, and the web UI behind Cloudflare SSO) plus qBittorrent. Its DHT sensor is unused.
 
 Jellyfin and Website are accessible off the network.
 Jellyfin is behind a secure password.
@@ -26,6 +26,8 @@ qBittorrent is network only and has a strict whitelist.
 Jason (Desktop) does YOLO model fine tuning for the Petcam and is temporarily the network storage.
 
 Rose (Laptop) uses jellyfin with TV in place of the Google Streamer TV solution temporarily.
+
+Ralph (Dell OptiPlex 7070 Micro, Arch + Guix) is the always-on server and the public gateway: Jellyfin, the media library, the website, and the only Cloudflare tunnel. See docs/ralph/README.md.
 
 ## Detailed Todos and Tickets
 
