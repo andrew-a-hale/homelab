@@ -10,6 +10,8 @@
 
 - [ ] Ensure this homelab is simple to bootstrap
 
+- [ ] Finish the repo rename (`tom` → `homelab`, done 2026-11-07 for GitHub, this laptop and Tom): Jason still has `~/projects/tom`, and it is only reachable via the runner. Also `scripts/vpn-soak` points at `~/projects/homelab/scripts/vpn` on Jason.
+
 - [ ] Tailnet auth on headless boxes (console-only, no CLI): disable node key expiry for `ralph` and `tom` (currently 2027-05-06 and 2027-01-14), and set the ACL `ssh` rule to `action: "accept"` so the 12-hourly check prompt stops (docs/vpn/complete/tailnet-key-expiry-2026-11-07.md)
 
 - [ ] Ralph (OptiPlex 7070, new always-on server) — Arch + LUKS/TPM2 + Guix installed, Jellyfin + 58G media migrated, see [docs/ralph/](docs/ralph/). Remaining:
