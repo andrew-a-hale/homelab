@@ -20,15 +20,26 @@
   - [x] Petcam is a standalone app on Tom (tailnet bind), Ralph nginx is its only ingress; Tom runs no web server (docs/petcam/complete/standalone-app-2026-11-07.md)
   - [x] Pin the IP (DHCP reservation on the router: .26 -> 8C:C6:81:A2:7A:38, done 2026-11-07)
   - [x] Host firewall on Ralph (ufw: LAN + tailnet trusted, tailscale UDP, no WAN inbound, 2026-11-07)
-  - [ ] Secure Boot with own keys (`sbctl`) so the TPM2 PCR 7 seal means something
-  - [ ] Intel AMT for out-of-band console (LUKS-prompt failures need a keyboard)
   - [x] Secrets are not backed up by design; `RUNBOOK.md` covers regenerating the stack and every secret (media is the one no-second-copy item)
 
-- [ ] Change qBittorrent login to tom/pancake
+- [x] Change qBittorrent login to tom/pancake (nginx basic auth on `/bt/`, 2026-11-07)
 
-- [ ] Fix Tom restarts — **wifi cause eliminated, restarts still unexplained**. Scan wedge fixed (iwd backend since 2026-10-29: 0 `SCAN-FAILED` every boot, `wifi-guard` silent since 10-28 18:18 — docs/server/complete/wifi-scan-wedge-2026-10-31.md), but Tom still hard-resets ~hourly (19 boots on 2026-10-31, gaps 77 s–2.5 h) — watchdog reset with no shutdown message, `rcu_preempt` stall on CPU 3 (never any other core) in ~⅓ of boots, silent otherwise. Capture is live since 2026-10-31 (ramoops/pstore + `panic=15` + `panic_on_rcu_stall`, `scripts/tom-trace.sh`); bootloader updated to 2026-09-25. Next: read the first pstore dump — archived automatically to /var/lib/systemd/pstore/ — and compare `/var/log/tom-trace.log` against the crash gap. Still open: PSU/cable check (owner, physical) and the SD card as suspect (docs/server/todo/tom-reboots-hang-2026-10-31.md)
+- [ ] Fix Tom restarts (parked 2026-11-07: Tom is no longer load bearing — petcam needs only ~90% uptime; crash capture stays armed, PSU/SD check is still a physical task) — **wifi cause eliminated, restarts still unexplained**. Scan wedge fixed (iwd backend since 2026-10-29: 0 `SCAN-FAILED` every boot, `wifi-guard` silent since 10-28 18:18 — docs/server/complete/wifi-scan-wedge-2026-10-31.md), but Tom still hard-resets ~hourly (19 boots on 2026-10-31, gaps 77 s–2.5 h) — watchdog reset with no shutdown message, `rcu_preempt` stall on CPU 3 (never any other core) in ~⅓ of boots, silent otherwise. Capture is live since 2026-10-31 (ramoops/pstore + `panic=15` + `panic_on_rcu_stall`, `scripts/tom-trace.sh`); bootloader updated to 2026-09-25. Next: read the first pstore dump — archived automatically to /var/lib/systemd/pstore/ — and compare `/var/log/tom-trace.log` against the crash gap. Still open: PSU/cable check (owner, physical) and the SD card as suspect (docs/server/todo/tom-reboots-hang-2026-10-31.md)
 
 - [ ] Simplify the homelab now that Tom is no longer load bearing (petcam needs only ~90% uptime)
+
+## Decided not to do (2026-11-07)
+
+- **DHT calibration**: the sensor reads true. The old 2.8°C gap was two different
+  sensors in two different places; only Ralph's rig remains. No offset, no knob.
+- **Secure Boot** (own keys via `sbctl`): not worth it for this threat model. It
+  only hardens the TPM auto-unlock seal against someone who can modify the boot
+  partition and wait for the next boot — a targeted evil maid, not a stolen box.
+  LUKS without it still covers opportunistic theft.
+- **Intel AMT**: remote console for a box that lives in the house. Needs wired
+  ethernet, MEBx setup and a strong password (it is a backdoor by design) just to
+  avoid walking to the closet on a rare bad boot. Keyboard + monitor on the shelf
+  instead; revisit only if Ralph becomes physically unreachable.
 
 ## Purchases
 

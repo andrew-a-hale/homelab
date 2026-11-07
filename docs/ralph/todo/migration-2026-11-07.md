@@ -1,7 +1,7 @@
 # Ralph migration: what moves off Tom (2026-11-07)
 
-**Status:** planning. Ralph is installed, encrypted, Guix-installed, with a
-3.6T ext4 media drive at `/srv/media`. Nothing has moved yet.
+**Status:** complete (2026-11-07). Everything below lives on Ralph; Tom runs
+only the petcam. `RUNBOOK.md` rebuilds it all.
 
 ## Inventory of Tom (Debian, Pi 5, aarch64, 29G SD card, 74% full)
 

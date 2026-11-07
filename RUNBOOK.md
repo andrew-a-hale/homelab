@@ -101,3 +101,12 @@ laptop under `~/petcam-train`). Join the tailnet. Nothing else belongs on Tom.
 
 Not a secret but with **no second copy**: the 62G of media on `/srv/media`.
 Re-rip or re-torrent if the drive dies. Say the word if that changes.
+
+## Deliberate non-goals (decided 2026-11-07)
+
+- **DHT calibration** — the sensor reads true; no offset exists and none should
+  be added.
+- **Secure Boot** — skipped; it only hardens TPM auto-unlock against a targeted
+  evil maid, not against the actual threat (theft of the box).
+- **Intel AMT** — skipped; a remote console for a physically reachable box. Keep
+  a keyboard + monitor on the shelf instead.
