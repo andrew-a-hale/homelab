@@ -13,9 +13,9 @@ standalone app, so a petcam change cannot break the public site build
 
 | Piece | Where | Notes |
 |---|---|---|
-| `petcam.sh` | `~/projects/tom/scripts/petcam.sh` | always-on capture supervisor: 720p@1fps capture → 480p HLS stream + 1fps still; relaunches dead pipeline (60 s backoff if it flaps), logs to `~/petcam/logs/` |
-| `petcam-detect.py` | `~/projects/tom/scripts/petcam-detect.py` | 5 s loop, multi-pass: movement diff → YOLOv8n (2-class: pancake/willow), writes shots + log |
-| `petcam` (app) | `~/projects/tom/petcam/` → `/etc/systemd/system/petcam.service` | standalone Go binary (stdlib only, templates embedded), gallery `/`, `/live`, `/log`, `/label`, `/review`; binds **tailnet only** `100.77.132.110:8080` |
+| `petcam.sh` | `~/projects/homelab/scripts/petcam.sh` | always-on capture supervisor: 720p@1fps capture → 480p HLS stream + 1fps still; relaunches dead pipeline (60 s backoff if it flaps), logs to `~/petcam/logs/` |
+| `petcam-detect.py` | `~/projects/homelab/scripts/petcam-detect.py` | 5 s loop, multi-pass: movement diff → YOLOv8n (2-class: pancake/willow), writes shots + log |
+| `petcam` (app) | `~/projects/homelab/petcam/` → `/etc/systemd/system/petcam.service` | standalone Go binary (stdlib only, templates embedded), gallery `/`, `/live`, `/log`, `/label`, `/review`; binds **tailnet only** `100.77.132.110:8080` |
 | nginx (Ralph) | `/etc/nginx/conf.d/petcam.conf` | `petcam.andrewahale.com` → `100.77.132.110:8080`; the tunnel points at Ralph nginx, so Tom runs **no** web server |
 | cron | see `crontab.txt` | capture + detector `@reboot` + 2-min watchdogs (the app is a systemd unit now) |
 
@@ -33,8 +33,8 @@ standalone app, so a petcam change cannot break the public site build
    DNS: `cloudflared tunnel route dns andrewahale <hostname>` for each ingress
    hostname. Edge setup (Access on `petcam.andrewahale.com`) is in
    `docs/website/README.md`.
-3. **Petcam app**: `git clone git@github.com:andrew-a-hale/tom.git
-   ~/projects/tom && cd ~/projects/tom/petcam && make`, then
+3. **Petcam app**: `git clone git@github.com:andrew-a-hale/homelab.git
+   ~/projects/homelab && cd ~/projects/homelab/petcam && make`, then
    `cp petcam.service /etc/systemd/system/ && systemctl enable --now petcam`.
    `BIND`/`PORT` live in the unit. No nginx on Tom: Ralph proxies to the tailnet.
 4. **Petcam scripts**: copy `scripts/petcam.sh` + `scripts/petcam-detect.py`
@@ -51,7 +51,7 @@ standalone app, so a petcam change cannot break the public site build
 
 ```bash
 rpicam-still --list-cameras            # one imx708 (two once the NoIR lands)
-python3 ~/projects/tom/scripts/petcam-detect.py --selftest  # classifier + label math + empty-frame
+python3 ~/projects/homelab/scripts/petcam-detect.py --selftest  # classifier + label math + empty-frame
 curl -s http://100.77.132.110:8080/shots.json   # from Ralph; no Host header needed
 curl -s http://100.77.132.110:8080/log | head
 curl -s -o /dev/null -w "%{http_code}\n" -H "Host: petcam.andrewahale.com" \
@@ -167,13 +167,13 @@ Full procedure in `skills/petcam-retrain/SKILL.md`.
 - **Verify labels at `/review` first** (2026-11-01): auto-labels carry
   colour-classifier errors, and `train-model.sh` drops any pair that is not
   human-verified (`reviewed.txt`, `/label` names, `_neg` rejects).
-- Run: `cd ~/projects/tom && EPOCHS=100 scripts/train-model.sh`
+- Run: `cd ~/projects/homelab && EPOCHS=100 scripts/train-model.sh`
   - pulls pairs via rsync (drops 0-byte / orphan pairs),
   - 80/20 split (deterministic), fine-tunes `yolov8n` at `imgsz=640`,
   - exports ONNX, pushes to `~/petcam/model/yolov8n.onnx` (previous kept as
     `.bak`), restarts the detector.
 - Quality gate (manual): score known cat + cat-free frames vs `.bak`,
-  `ssh tom 'python3 ~/projects/tom/scripts/petcam-detect.py --selftest'`, watch `/log` for real
+  `ssh tom 'python3 ~/projects/homelab/scripts/petcam-detect.py --selftest'`, watch `/log` for real
   detections.
 - Roll back: `ssh tom 'cp ~/petcam/model/yolov8n.onnx.bak ~/petcam/model/yolov8n.onnx'`
   then restart the detector (bracketed pkill pattern — see skill).

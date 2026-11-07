@@ -2,6 +2,10 @@
 
 This is a codebase for a homelab. For my homelab.
 
+The repo is `homelab` (`git@github.com:andrew-a-hale/homelab.git`, checked out
+as `~/projects/homelab`). **The machine names are unrelated**: Tom (Pi 5),
+Jason, Rose and Ralph are hosts. Only paths and repo URLs say `homelab`.
+
 It should use the following:
 - Proton VPN
 - Proton Drive

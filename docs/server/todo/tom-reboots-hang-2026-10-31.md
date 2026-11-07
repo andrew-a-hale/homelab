@@ -272,7 +272,7 @@ silent while wifi was dead. The third is the live file, so it restores nothing.
 So recovery is **fix-forward**, and the premise is different from "keep a backup
 in case": the current file plus the repo copy on `master` is the recovery path. If
 the deployed guard is broken or missing, copy `scripts/wifi-guard.sh` from master
-(`/home/andy/projects/tom` on jason) to `/usr/local/bin/` — do not reach for a
+(`/home/andy/projects/homelab` on jason) to `/usr/local/bin/` — do not reach for a
 `bak-*`. The older copies are for understanding history only.
 
 > **Historical note:** this text used to say "the repo copy on `tom-hang-capture`".
@@ -287,11 +287,11 @@ against the crontabs rather than assumed:
 | runs on Tom | path | started by |
 | --- | --- | --- |
 | `wifi-guard.sh` | `/usr/local/bin/wifi-guard.sh` | tom's cron, `*/2`, via sudo |
-| `petcam.sh`, `petcam-detect.py` | `/home/tom/projects/tom/scripts/` | tom's cron, `*/2` and `@reboot` |
-| `tom-trace.sh`, `tom-kmsg.sh` | `/home/tom/projects/tom/scripts/` | root's cron, `@reboot` |
+| `petcam.sh`, `petcam-detect.py` | `/home/tom/projects/homelab/scripts/` | tom's cron, `*/2` and `@reboot` |
+| `tom-trace.sh`, `tom-kmsg.sh` | `/home/tom/projects/homelab/scripts/` | root's cron, `@reboot` |
 | `train-model.sh`, `tom-watch-remote.sh` | **not Tom** — they run on jason | manual |
 
-**The trap, stated correctly:** Tom's checkout at `/home/tom/projects/tom` is on
+**The trap, stated correctly:** Tom's checkout at `/home/tom/projects/homelab` is on
 `master` at an old commit and is **git-stale**, but it is **the live deploy path
 for four of the five scripts that run on Tom**. So "it is a stale clone, ignore
 it" is exactly the wrong conclusion — overwriting or pruning that directory takes
@@ -299,7 +299,7 @@ out the petcam pipeline and both crash samplers. Its stale `wifi-guard.sh` (an o
 55-line copy) is simply unused, because cron runs the `/usr/local/bin` one.
 
 **Compare per file, never by git state:** `md5sum
-/home/tom/projects/tom/scripts/<file>` against the repo. Git age on that clone
+/home/tom/projects/homelab/scripts/<file>` against the repo. Git age on that clone
 tells you nothing about what is running.
 
 **They match by hand, not by deployment.** `scripts/wifi-guard.sh` in the repo and
@@ -481,7 +481,7 @@ as a check that reads clean.
 So every report states both, not just the md5:
 
 ```bash copy Copy branch identity
-cd /home/andy/projects/tom
+cd /home/andy/projects/homelab
 git branch --show-current
 git rev-list --count origin/master..HEAD   # ahead
 git rev-list --count HEAD..origin/master   # behind

@@ -12,7 +12,7 @@
 # and self-trims to the newest half of MAX lines (2000 lines at 15 s is ~8 h of
 # history, trimmed back to ~4 h), so the file stays small on the SD card.
 #
-# Cron (root): @reboot /home/tom/projects/tom/scripts/tom-trace.sh >/dev/null 2>&1 &
+# Cron (root): @reboot /home/tom/projects/homelab/scripts/tom-trace.sh >/dev/null 2>&1 &
 # See docs/server/todo/tom-reboots-hang-2026-10-31.md.
 
 set -u

@@ -142,7 +142,7 @@ ps -eo pid,ppid,args | grep -E "tom-kmsg|dmesg --time-format" | grep -v grep
 # 2. kill that exact PID
 sudo kill <PID_from_above>
 # 3. start it again, then re-run the health check and confirm one dmesg
-sudo nohup /home/tom/projects/tom/scripts/tom-kmsg.sh >/dev/null 2>&1 &
+sudo nohup /home/tom/projects/homelab/scripts/tom-kmsg.sh >/dev/null 2>&1 &
 ```
 
 If the supervisor is already gone, the orphaned `dmesg --time-format iso -w` is

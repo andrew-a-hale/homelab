@@ -10,7 +10,7 @@ User=tom
 # the app directly. Needs tailscale0 up; Restart=always covers boot ordering.
 Environment=BIND=100.77.132.110
 Environment=PORT=8080
-ExecStart=/home/tom/projects/tom/petcam/petcam
+ExecStart=/home/tom/projects/homelab/petcam/petcam
 Restart=always
 RestartSec=2
 

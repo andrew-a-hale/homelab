@@ -192,7 +192,7 @@ func handleLabelSave(w http.ResponseWriter, r *http.Request) {
 func handleCapture(w http.ResponseWriter, r *http.Request) {
 	// Snapshot the detector's current 1fps still into the label queue, running
 	// YOLO so a proposed box + cat name is attached when detection succeeds.
-	cmd := exec.Command("python3", "/home/tom/projects/tom/scripts/petcam-detect.py", "--capture")
+	cmd := exec.Command("python3", "/home/tom/projects/homelab/scripts/petcam-detect.py", "--capture")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		http.Error(w, "capture failed: "+string(out), http.StatusServiceUnavailable)
 		return

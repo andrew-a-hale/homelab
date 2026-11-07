@@ -5,7 +5,7 @@
 
 **Cause:** `handleCapture` in the website's `main.go` still invoked the
 detector at its pre-git path. The 2026-10-27 move to
-`/home/tom/projects/tom/scripts/petcam-detect.py` fixed `train-model.sh` and
+`/home/tom/projects/homelab/scripts/petcam-detect.py` fixed `train-model.sh` and
 the retrain skill, but the web app was a third stale reference nobody swept.
 
 **Fix:** `main.go` now execs the git-checkout path. Verified live: `/capture`

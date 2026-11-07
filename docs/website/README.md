@@ -18,7 +18,7 @@ visitor → Cloudflare edge → tunnel "andrewahale" → cloudflared (on Tom) �
   log, `/label` = near-miss labeling queue, `/review` = training-corpus label
   audit, `/shots/*` = snapshot files (`/home/tom/petcam/shots/`), `/hls/*` =
   stream segments (`/dev/shm/petcam`, produced by
-  `~/projects/tom/scripts/petcam.sh`).
+  `~/projects/homelab/scripts/petcam.sh`).
 - **Tunnel**: `cloudflared tunnel run andrewahale` on Tom. Locally-managed
   — ingress lives in `/home/tom/.cloudflared/config.yaml` on the Pi
   (andrewahale.com + www + petcam → :8080, jellyfin.andrewahale.com → :8096,
@@ -112,7 +112,7 @@ What the detector collects (`harvest()` / `save()` in `~/petcam-detect.py`):
 
 To retrain later (manual and deliberate):
 1. Label the `tolabel` images on the site (`/label`).
-2. On Jason: `cd ~/projects/tom && EPOCHS=100 scripts/train-model.sh`
+2. On Jason: `cd ~/projects/homelab && EPOCHS=100 scripts/train-model.sh`
    (pulls pairs via rsync, 80/20 split, trains `yolov8n` at `imgsz=640`,
    exports ONNX, pushes to Tom, restarts the detector). Venv:
    `~/petcam-train/.venv` (Python 3.12).

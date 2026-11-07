@@ -16,7 +16,7 @@
 # truncation writes resume at the new EOF. Renaming the inode would leave dmesg
 # writing to an unlinked file and silently lose everything.
 #
-# Cron (root): @reboot /home/tom/projects/tom/scripts/tom-kmsg.sh >/dev/null 2>&1 &
+# Cron (root): @reboot /home/tom/projects/homelab/scripts/tom-kmsg.sh >/dev/null 2>&1 &
 # See docs/server/todo/tom-reboots-hang-2026-10-31.md.
 
 set -u

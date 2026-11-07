@@ -10,7 +10,7 @@ exec 9>/tmp/vpn-soak.lock && flock -n 9 || { echo "vpn-soak already running"; ex
 MIN=${1:-10}
 shift 2>/dev/null || true
 MODES=(${*:-any off})
-VPN=$(command -v vpn || echo "$HOME/projects/tom/scripts/vpn")
+VPN=$(command -v vpn || echo "$HOME/projects/homelab/scripts/vpn")
 LOG="$HOME/vpn-soak-$(date +%Y%m%d-%H%M%S).log"
 START=$(date +%s)
 TMP=$(mktemp)
