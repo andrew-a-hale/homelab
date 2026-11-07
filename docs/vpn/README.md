@@ -83,6 +83,12 @@ Proton's Debian build is missing pieces their Arch build doesn't need:
 
 ## Tailscale — remote access to the LAN
 
+- **Auth clocks, headless boxes:** `tom` and `ralph` have node key expiry
+  **disabled** and are reached over Tailscale SSH with `action: "accept"` (no
+  12-hourly check prompt). Defaults would have been 180 days and 12h, both of
+  which need a console or a browser click on machines that have neither.
+  Laptops/phones keep their expiry. See
+  `complete/tailnet-key-expiry-2026-11-07.md`.
 - tom advertises `192.168.1.0/24` only (exit-node routes dropped 2026-10-24).
   **Route approved in the Tailscale admin console** (machine `tom` → Edit route
   settings). Home-exit routing remains an upgrade path (`--advertise-exit-node`).
