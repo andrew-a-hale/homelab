@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Cam — Review</title>
+    <style>
+        body { font-family: sans-serif; max-width: 60rem; margin: 0 auto; padding: 1rem; }
+        nav a { margin-right: 1rem; }
+        #wrap { position: relative; display: inline-block; max-width: 100%; user-select: none; }
+        #img { max-width: 100%; display: block; border-radius: 4px; }
+        .bx { position: absolute; border: 3px solid; }
+        .bx.cat0 { border-color: #f90; }
+        .bx.cat1 { border-color: #69c; }
+        .bx.flag { border-color: #f33; border-style: dashed; }
+        button { font-size: 1rem; padding: .5rem 1rem; margin-right: .5rem; }
+        .bar { margin: 1rem 0; }
+        .boxrow { padding: .25rem 0; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+        .stat { color: #666; font-size: .9rem; margin-right: .5rem; }
+    </style>
+</head>
+<body>
+    <h1>Pet Cam — Review</h1>
+    <nav>
+        <a href="/">home</a>
+        <a href="/live">live stream</a>
+        <a href="/log">log</a>
+        <a href="/label">label</a>
+        <a href="/review">review</a>
+    </nav>
+    <p>Verify the auto-labeled training corpus before a retrain. Red dashed boxes
+       disagree with the colour hint (orange fraction vs 0.18) — look at those
+       first, but the hint is lighting-fragile: it sorts this queue, it never
+       decides a label. Keys: ← → move · D reviewed · N no cat · X delete frame.</p>
+    <div id="wrap">
+        <img id="img" alt="training frame">
+    </div>
+    <div class="bar" id="boxbar"></div>
+    <div class="bar">
+        <button id="done">✓ reviewed (D)</button>
+        <button id="neg">no cat → negative (N)</button>
+        <button id="del">delete frame (X)</button>
+        <button id="prev">← prev</button>
+        <button id="next">next →</button>
+        <button id="filter">flagged only</button>
+        <span id="info">loading corpus…</span>
+    </div>
+    <script>
+        const NAME = ["pancake", "willow"];
+        let items = [], view = [], idx = 0, onlyFlagged = false, cur = null;
+        const img = document.getElementById("img");
+        const wrap = document.getElementById("wrap");
+
+        const hueSays = b => b.orange > 0.18 ? 0 : 1;
+        const boxFlagged = b => hueSays(b) !== b.cid;
+        const itemFlagged = it => it.boxes.length > 1 || it.boxes.some(boxFlagged);
+
+        function buildView() {
+            const keep = cur?.name;
+            view = onlyFlagged ? items.filter(it => itemFlagged(it) && !it.done) : items.slice();
+            idx = keep ? Math.max(view.findIndex(it => it.name === keep), 0) : 0;
+        }
+
+        function layoutBoxes() {
+            wrap.querySelectorAll(".bx").forEach(el => el.remove());
+            if (!cur || !img.naturalWidth) return;
+            cur.boxes.forEach(b => {
+                const d = document.createElement("div");
+                d.className = "bx " + (boxFlagged(b) ? "flag" : b.cid === 0 ? "cat0" : "cat1");
+                d.style.left = b.rect[0] / img.naturalWidth * 100 + "%";
+                d.style.top = b.rect[1] / img.naturalHeight * 100 + "%";
+                d.style.width = (b.rect[2] - b.rect[0]) / img.naturalWidth * 100 + "%";
+                d.style.height = (b.rect[3] - b.rect[1]) / img.naturalHeight * 100 + "%";
+                wrap.appendChild(d);
+            });
+        }
+
+        function render() {
+            cur = view[idx];
+            const bar = document.getElementById("boxbar");
+            const info = document.getElementById("info");
+            bar.innerHTML = "";
+            if (!cur) {
+                img.style.display = "none";
+                info.textContent = onlyFlagged ? "no flagged frames left" : "corpus empty";
+                return;
+            }
+            img.style.display = "block";
+            if (!img.src.endsWith(cur.url)) img.src = cur.url;
+            layoutBoxes();
+            info.textContent = cur.name + "   " + (idx + 1) + "/" + view.length +
+                "   ·   " + items.filter(it => it.done).length + "/" + items.length + " reviewed" +
+                (cur.done ? "   ✓" : "");
+            cur.boxes.forEach((b, i) => {
+                const row = document.createElement("div");
+                row.className = "boxrow";
+                row.append("box " + (i + 1) + " · " + NAME[b.cid]);
+                const stat = document.createElement("span");
+                stat.className = "stat";
+                stat.textContent = "orange=" + b.orange.toFixed(2) + " gray=" + b.gray.toFixed(2) +
+                    (boxFlagged(b) ? "   hue says " + NAME[hueSays(b)] : "");
+                row.appendChild(stat);
+                if (b.cid !== 0) row.appendChild(btn("→ pancake", () => setCat(i, 0)));
+                if (b.cid !== 1) row.appendChild(btn("→ willow", () => setCat(i, 1)));
+                row.appendChild(btn("remove box", () => delBox(i)));
+                bar.appendChild(row);
+            });
+        }
+
+        function btn(label, fn) {
+            const b = document.createElement("button");
+            b.textContent = label;
+            b.onclick = fn;
+            return b;
+        }
+
+        function post(path, params) {
+            return fetch(path, { method: "POST", body: new URLSearchParams(params) });
+        }
+
+        function setCat(i, cid) {
+            post("/review/set", { name: cur.name, i: cur.boxes[i].index, cat: NAME[cid] })
+                .then(() => { cur.boxes[i].cid = cid; render(); });
+        }
+
+        function delBox(i) {
+            const line = cur.boxes[i].index;
+            post("/review/delbox", { name: cur.name, i: line }).then(() => {
+                cur.boxes.forEach(b => { if (b.index > line) b.index--; });
+                cur.boxes.splice(i, 1);
+                render();
+            });
+        }
+
+        function markDone() {
+            post("/review/done", { name: cur.name, done: cur.done ? "0" : "1" })
+                .then(() => { cur.done = !cur.done; render(); });
+        }
+
+        function negative() {
+            post("/review/negative", { name: cur.name })
+                .then(() => { cur.boxes = []; render(); });
+        }
+
+        function deleteFrame() {
+            if (!cur || !confirm("Delete " + cur.name + " entirely?")) return;
+            post("/review/delete", { name: cur.name }).then(() => {
+                items.splice(items.indexOf(cur), 1);
+                buildView();
+                render();
+            });
+        }
+
+        const step = n => { idx = Math.min(Math.max(idx + n, 0), view.length - 1); render(); };
+        document.getElementById("done").onclick = markDone;
+        document.getElementById("neg").onclick = negative;
+        document.getElementById("del").onclick = deleteFrame;
+        document.getElementById("prev").onclick = () => step(-1);
+        document.getElementById("next").onclick = () => step(1);
+        document.getElementById("filter").onclick = e => {
+            onlyFlagged = !onlyFlagged;
+            e.target.textContent = onlyFlagged ? "show all" : "flagged only";
+            buildView();
+            render();
+        };
+        img.onload = layoutBoxes;
+
+        document.addEventListener("keydown", e => {
+            if (e.key === "ArrowRight") step(1);
+            else if (e.key === "ArrowLeft") step(-1);
+            else if (e.key === "d") markDone();
+            else if (e.key === "n") negative();
+            else if (e.key === "x") deleteFrame();
+        });
+
+        fetch("/review/list", { cache: "no-store" })
+            .then(r => r.json())
+            .then(data => { items = data; buildView(); render(); });
+    </script>
+</body>
+</html>

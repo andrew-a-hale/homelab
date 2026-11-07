@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Cam — Label</title>
+    <style>
+        body { font-family: sans-serif; max-width: 60rem; margin: 0 auto; padding: 1rem; }
+        nav a { margin-right: 1rem; }
+        #wrap { position: relative; display: inline-block; max-width: 100%; user-select: none; }
+        #img { max-width: 100%; display: block; border-radius: 4px; }
+        #box { position: absolute; border: 3px solid #7CFC00; display: none; cursor: move; }
+        button { font-size: 1rem; padding: .5rem 1rem; margin-right: .5rem; }
+        .bar { margin: 1rem 0; }
+    </style>
+</head>
+<body>
+    <h1>Pet Cam — Label</h1>
+    <nav>
+        <a href="/">home</a>
+        <a href="/live">live stream</a>
+        <a href="/log">log</a>
+        <a href="/label">label</a>
+        <a href="/review">review</a>
+    </nav>
+    <p>YOLO proposes a box from the near-miss pass. Drag on the image to redraw it.
+       The suggested name is only a colour hint — lighting fools it, so pick the cat yourself.</p>
+    <div id="wrap">
+        <img id="img" alt="near-miss frame">
+        <div id="box"></div>
+    </div>
+    <div class="bar">
+        <button id="save">save · suggested name</button>
+        <button id="saveWillow">save · willow</button>
+        <button id="savePancake">save · pancake</button>
+        <button id="reject">reject (save as negative)</button>
+        <button id="delete">delete (error frame)</button>
+        <button id="skip">skip</button>
+        <span id="info"></span>
+    </div>
+    <script>
+        let cur = null;          // {name, url, box, left}
+        let norm = null;         // current box {cx, cy, w, h} normalized
+        const img = document.getElementById("img");
+        const box = document.getElementById("box");
+
+        function showBox() {
+            if (!norm) { box.style.display = "none"; return; }
+            box.style.display = "block";
+            box.style.left = (norm.cx - norm.w / 2) * 100 + "%";
+            box.style.top = (norm.cy - norm.h / 2) * 100 + "%";
+            box.style.width = norm.w * 100 + "%";
+            box.style.height = norm.h * 100 + "%";
+        }
+
+        async function load(after) {
+            cur = await (await fetch("/label/next" + (after ? "?after=" + encodeURIComponent(after) : ""),
+                                     { cache: "no-store" })).json();
+            norm = null;
+            if (!cur.name) {
+                img.style.display = "none"; box.style.display = "none";
+                document.getElementById("info").textContent = "queue empty";
+                return;
+            }
+            img.style.display = "block";
+            img.onload = () => {
+                if (cur.box) {
+                    norm = { cx: (cur.box[0] + cur.box[2]) / 2 / img.naturalWidth,
+                             cy: (cur.box[1] + cur.box[3]) / 2 / img.naturalHeight,
+                             w: (cur.box[2] - cur.box[0]) / img.naturalWidth,
+                             h: (cur.box[3] - cur.box[1]) / img.naturalHeight };
+                }
+                showBox();
+            };
+            img.src = cur.url;
+            document.getElementById("info").textContent = cur.name + "  (" + cur.left + " in queue)" +
+                (cur.propose ? "   suggested: " + cur.propose : "");
+        }
+
+        // drag to draw
+        let drag = null;
+        img.addEventListener("mousedown", e => {
+            const r = img.getBoundingClientRect();
+            drag = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+            e.preventDefault();
+        });
+        window.addEventListener("mousemove", e => {
+            if (!drag) return;
+            const r = img.getBoundingClientRect();
+            const x = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1);
+            const y = Math.min(Math.max((e.clientY - r.top) / r.height, 0), 1);
+            norm = { cx: (drag.x + x) / 2, cy: (drag.y + y) / 2, w: Math.abs(x - drag.x), h: Math.abs(y - drag.y) };
+            showBox();
+        });
+        window.addEventListener("mouseup", () => drag = null);
+
+        function saveAs(cat) {
+            if (!cur?.name || !norm || norm.w <= 0) return;
+            const body = new URLSearchParams({ name: cur.name, cat,
+                                              box: [norm.cx, norm.cy, norm.w, norm.h].join(",") });
+            fetch("/label/save", { method: "POST", body }).then(() => load());
+        }
+        document.getElementById("save").onclick = () => {
+            if (cur?.propose === "pancake" || cur?.propose === "willow") saveAs(cur.propose);
+            else alert("no name suggestion on this frame — use save · willow or save · pancake");
+        };
+        document.getElementById("saveWillow").onclick = () => saveAs("willow");
+        document.getElementById("savePancake").onclick = () => saveAs("pancake");
+        document.getElementById("reject").onclick = () => {
+            if (!cur?.name) return;
+            fetch("/label/reject", { method: "POST", body: new URLSearchParams({ name: cur.name }) })
+                .then(() => load());
+        };
+        document.getElementById("delete").onclick = () => {
+            if (!cur?.name) return;
+            fetch("/label/delete", { method: "POST", body: new URLSearchParams({ name: cur.name }) })
+                .then(() => load());
+        };
+        document.getElementById("skip").onclick = () => cur?.name && load(cur.name);
+
+        load();
+    </script>
+</body>
+</html>

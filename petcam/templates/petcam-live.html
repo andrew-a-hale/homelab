@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Cam — Live</title>
+    <style>
+        body { font-family: sans-serif; max-width: 60rem; margin: 0 auto; padding: 1rem; }
+        video { width: 100%; background: #000; border-radius: 4px; }
+        nav a { margin-right: 1rem; }
+    </style>
+</head>
+<body>
+    <h1>Pet Cam — Live</h1>
+    <nav>
+        <a href="/">snapshots</a>
+        <a href="/live">live stream</a>
+        <a href="/log">log</a>
+        <a href="/label">label</a>
+        <a href="/review">review</a>
+    </nav>
+    <video id="stream" autoplay muted playsinline></video>
+    <p>
+        <a href="/capture"><button type="button">Capture current frame for labeling</button></a>
+    </p>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+    <script>
+        // Camera runs 24/7; the retry loop just covers pipeline restart windows.
+        const video = document.getElementById("stream");
+        async function startWhenReady() {
+            const r = await fetch("/hls/index.m3u8", { cache: "no-store" });
+            if (!r.ok) { setTimeout(startWhenReady, 3000); return; }
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource("/hls/index.m3u8");
+                hls.attachMedia(video);
+            } else {
+                video.src = "/hls/index.m3u8"; // Safari plays HLS natively
+            }
+        }
+        startWhenReady();
+    </script>
+</body>
+</html>

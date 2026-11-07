@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Cam</title>
+    <style>
+        body { font-family: sans-serif; max-width: 60rem; margin: 0 auto; padding: 1rem; }
+        img { width: 100%; max-width: 40rem; display: block; margin-bottom: .25rem; border-radius: 4px; }
+        figure { margin: 0 0 1.5rem; }
+        figcaption { color: #555; font-size: .9rem; }
+        button { font-size: .8rem; margin-left: .5rem; }
+        nav a { margin-right: 1rem; }
+    </style>
+</head>
+<body>
+    <h1>Pet Cam</h1>
+    <nav>
+        <a href="/">home</a>
+        <a href="/live">live stream</a>
+        <a href="/log">log</a>
+        <a href="/label">label</a>
+        <a href="/review">review</a>
+    </nav>
+    {{if not .}}<p id="empty">No detections yet.</p>{{end}}
+    <div id="shots">
+        {{range .}}
+        <figure data-name="{{.Name}}">
+            <a href="{{.URL}}"><img src="{{.URL}}" loading="lazy" alt="detection {{.When}}"></a>
+            <figcaption>{{.When}}
+                <form method="post" action="/delete" style="display:inline">
+                    <input type="hidden" name="name" value="{{.Name}}">
+                    <button type="submit">delete</button>
+                </form>
+            </figcaption>
+        </figure>
+        {{end}}
+    </div>
+    <script>
+        // Live gallery: poll every 5 s and prepend new shots.
+        async function poll() {
+            try {
+                const list = await (await fetch("/shots.json", { cache: "no-store" })).json();
+                const current = new Set(list.map(s => s.name));
+                // Drop figures whose files were replaced/removed (e.g. newer shot per cat).
+                for (const fig of [...document.querySelectorAll("#shots figure")]) {
+                    if (!current.has(fig.dataset.name)) fig.remove();
+                }
+                const shown = new Set([...document.querySelectorAll("#shots figure")].map(f => f.dataset.name));
+                for (const s of list.filter(x => !shown.has(x.name)).reverse()) {
+                    const fig = document.createElement("figure");
+                    fig.dataset.name = s.name;
+                    fig.innerHTML = '<a href="' + s.url + '"><img src="' + s.url + '" loading="lazy"></a>' +
+                                    "<figcaption>" + s.when +
+                                    '<form method="post" action="/delete" style="display:inline">' +
+                                    '<input type="hidden" name="name" value="' + s.name + '">' +
+                                    '<button type="submit">delete</button></form></figcaption>';
+                    document.getElementById("shots").prepend(fig);
+                    document.getElementById("empty")?.remove();
+                }
+            } catch {}
+        }
+        poll();
+        setInterval(poll, 5000);
+    </script>
+</body>
+</html>

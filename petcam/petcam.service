@@ -1,0 +1,18 @@
+# /etc/systemd/system/petcam.service on Tom.
+[Unit]
+Description=Pet Cam gallery UI (camera, detections, training labels)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=tom
+# Tailnet address only: Ralph's nginx proxies here, nothing on the LAN can reach
+# the app directly. Needs tailscale0 up; Restart=always covers boot ordering.
+Environment=BIND=100.77.132.110
+Environment=PORT=8080
+ExecStart=/home/tom/projects/tom/petcam/petcam
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

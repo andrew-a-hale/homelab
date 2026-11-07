@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Cam — Detection Log</title>
+    <style>
+        body { font-family: sans-serif; max-width: 60rem; margin: 0 auto; padding: 1rem; }
+        pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; max-width: 40rem; }
+        nav a { margin-right: 1rem; }
+    </style>
+</head>
+<body>
+    <h1>Pet Cam — Detection Log</h1>
+    <nav>
+        <a href="/">home</a>
+        <a href="/live">live stream</a>
+        <a href="/log">log</a>
+        <a href="/label">label</a>
+        <a href="/review">review</a>
+    </nav>
+    {{if .}}<pre>{{.Text}}</pre>
+    <p>
+        {{if .Prev}}<a href="/log?p={{.Prev}}">newer</a>{{end}}
+        page {{.Page}}
+        {{if .Next}}<a href="/log?p={{.Next}}">older</a>{{end}}
+    </p>
+    {{else}}<p>No detections yet.</p>{{end}}
+</body>
+</html>
