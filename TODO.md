@@ -18,8 +18,8 @@
   - [x] Cloudflare tunnel on Ralph, website + Jellyfin served from Ralph (docs/ralph/complete/public-ingress-2026-11-07.md)
   - [x] Play-test Jellyfin on Ralph (Kokuho, 2026-11-07), then stop Jellyfin on Tom
   - [x] Petcam is a standalone app on Tom (tailnet bind), Ralph nginx is its only ingress; Tom runs no web server (docs/petcam/complete/standalone-app-2026-11-07.md)
-  - [ ] Pin the IP (DHCP reservation on the router, currently .26)
-  - [ ] Host firewall on Ralph
+  - [x] Pin the IP (DHCP reservation on the router: .26 -> 8C:C6:81:A2:7A:38, done 2026-11-07)
+  - [x] Host firewall on Ralph (ufw: LAN + tailnet trusted, tailscale UDP, no WAN inbound, 2026-11-07)
   - [ ] Secure Boot with own keys (`sbctl`) so the TPM2 PCR 7 seal means something
   - [ ] Intel AMT for out-of-band console (LUKS-prompt failures need a keyboard)
   - [x] Secrets are not backed up by design; `RUNBOOK.md` covers regenerating the stack and every secret (media is the one no-second-copy item)
