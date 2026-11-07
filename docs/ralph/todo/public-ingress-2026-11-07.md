@@ -98,5 +98,6 @@ visitor → Cloudflare edge → tunnel (cloudflared on RALPH, systemd)
 - The tunnel credentials are a secret. They come from Tom's
   `~/.cloudflared/`; nothing in the repo, and Ralph gets them by hand.
 - Ralph's DHT and Tom's DHT read different numbers (28.4/37 on Ralph vs 31.2/27
-  on Tom) because they are different physical sensors in different places. Decide
-  which one the public page should show — the site currently implies "office".
+  on Tom) because they are different physical sensors in different places.
+  **Decided 2026-11-07:** the page shows Ralph’s reading — Tom’s sensor is gone
+  (no USB serial on Tom, `dht-daemon` disabled), so there is only one sensor.

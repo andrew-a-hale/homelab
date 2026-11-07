@@ -18,7 +18,7 @@
   - [x] Cloudflare tunnel on Ralph, website + Jellyfin served from Ralph (docs/ralph/complete/public-ingress-2026-11-07.md)
   - [x] Play-test Jellyfin on Ralph (Kokuho, 2026-11-07), then stop Jellyfin on Tom
   - [x] Petcam is a standalone app on Tom (tailnet bind), Ralph nginx is its only ingress; Tom runs no web server (docs/petcam/complete/standalone-app-2026-11-07.md)
-  - [ ] DHT calibration: Ralph and Tom read 2.8°C apart in the same room
+  - [ ] DHT calibration: the D1 mini + DHT12 rig now lives on Ralph (Tom has no USB serial; `dht-daemon` disabled 2026-11-07). Set `OFFSET` in `scripts/dht-writer.sh` against a reference thermometer
   - [ ] Pin the IP (DHCP reservation on the router, currently .26)
   - [ ] Host firewall on Ralph
   - [ ] Secure Boot with own keys (`sbctl`) so the TPM2 PCR 7 seal means something

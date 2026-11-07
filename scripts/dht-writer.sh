@@ -8,6 +8,9 @@ set -eu
 DEV=${DEV:-/dev/ttyUSB0}
 OUT=${OUT:-/srv/dht/dht.json}
 BAUD=${BAUD:-115200}
+# ponytail: temp-only calibration knob; set OFFSET (e.g. -2.8) against a
+# reference thermometer. Humidity stays raw until it is shown to be off.
+OFFSET=${OFFSET:-0}
 
 mkdir -p "$(dirname "$OUT")"
 stty -F "$DEV" "$BAUD" raw -echo
@@ -17,6 +20,7 @@ export LANG=C
 # atomically so nginx never serves a half-written JSON.
 while read -r temp _ humid _; do
     [ -n "${temp:-}" ] && [ -n "${humid:-}" ] || continue
+    temp=$(awk -v t="$temp" -v o="$OFFSET" 'BEGIN { printf "%.1f", t + o }')
     printf '{"temp":%s,"humidity":%s,"date":"%s"}\n' \
         "$temp" "$humid" "$(date)" > "$OUT.tmp"
     mv "$OUT.tmp" "$OUT"
