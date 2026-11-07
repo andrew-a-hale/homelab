@@ -18,16 +18,17 @@
   - [x] Cloudflare tunnel on Ralph, website + Jellyfin served from Ralph (docs/ralph/complete/public-ingress-2026-11-07.md)
   - [x] Play-test Jellyfin on Ralph (Kokuho, 2026-11-07), then stop Jellyfin on Tom
   - [x] Petcam is a standalone app on Tom (tailnet bind), Ralph nginx is its only ingress; Tom runs no web server (docs/petcam/complete/standalone-app-2026-11-07.md)
-  - [ ] DHT calibration: the D1 mini + DHT12 rig now lives on Ralph (Tom has no USB serial; `dht-daemon` disabled 2026-11-07). Set `OFFSET` in `scripts/dht-writer.sh` against a reference thermometer
   - [ ] Pin the IP (DHCP reservation on the router, currently .26)
   - [ ] Host firewall on Ralph
   - [ ] Secure Boot with own keys (`sbctl`) so the TPM2 PCR 7 seal means something
   - [ ] Intel AMT for out-of-band console (LUKS-prompt failures need a keyboard)
-  - [ ] Backups of Ralph's `/home/andy` and `/var/lib`
+  - [x] Secrets are not backed up by design; `RUNBOOK.md` covers regenerating the stack and every secret (media is the one no-second-copy item)
 
 - [ ] Change qBittorrent login to tom/pancake
 
 - [ ] Fix Tom restarts — **wifi cause eliminated, restarts still unexplained**. Scan wedge fixed (iwd backend since 2026-10-29: 0 `SCAN-FAILED` every boot, `wifi-guard` silent since 10-28 18:18 — docs/server/complete/wifi-scan-wedge-2026-10-31.md), but Tom still hard-resets ~hourly (19 boots on 2026-10-31, gaps 77 s–2.5 h) — watchdog reset with no shutdown message, `rcu_preempt` stall on CPU 3 (never any other core) in ~⅓ of boots, silent otherwise. Capture is live since 2026-10-31 (ramoops/pstore + `panic=15` + `panic_on_rcu_stall`, `scripts/tom-trace.sh`); bootloader updated to 2026-09-25. Next: read the first pstore dump — archived automatically to /var/lib/systemd/pstore/ — and compare `/var/log/tom-trace.log` against the crash gap. Still open: PSU/cable check (owner, physical) and the SD card as suspect (docs/server/todo/tom-reboots-hang-2026-10-31.md)
+
+- [ ] Simplify the homelab now that Tom is no longer load bearing (petcam needs only ~90% uptime)
 
 ## Purchases
 
