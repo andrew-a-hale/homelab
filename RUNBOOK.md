@@ -33,10 +33,14 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
 2. Website: build the Go binary to `/srv/website/web/andrewhale-web`, unit
    `andrewhale-web.service` (User=andy, WorkingDirectory=/srv/website/web,
    listens `127.0.0.1:8080`).
-3. nginx: copy `docs/ralph/nginx-ralph.conf` and `docs/ralph/petcam.conf`
-   (if present) to `/etc/nginx/conf.d/`. nginx listens on :80: `/jf/` → 8096,
-   `/bt/` → 8081 (basic auth), `/static/dht.json` → `/srv/dht/dht.json`, rest →
-   127.0.0.1:8080. One hostname skips nginx: the cloudflared ingress points
+3. nginx: copy `docs/ralph/nginx-ralph.conf` to `/etc/nginx/conf.d/`. It
+   carries the upgrade map, the `ralph` default server (`/jf/` → 8096, `/bt/` →
+   8081 with basic auth, `/static/dht.json` → `/srv/dht/dht.json`, rest →
+   127.0.0.1:8080) and the `petcam.andrewahale.com` server as one file; the live
+   box splits the same content into `00-upgrade-map.conf`, `ralph.conf` and
+   `petcam.conf`. The petcam server needs the petcam app on `127.0.0.1:8082`
+   and Tom's static server on the tailnet (`100.77.132.110:8081`, `/hls/` →
+   there). One hostname skips nginx: the cloudflared ingress points
    `jellyfin.andrewahale.com` straight at 127.0.0.1:8096, because its BaseUrl
    already carries `/jf`.
 4. DHT: `install -m755 scripts/dht-writer.sh /usr/local/bin/dht-writer`, then
@@ -96,12 +100,19 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
   No WAN inbound is needed at all: the tunnel dials out. LAN and tailnet are
   trusted whole.
 
-## Tom (petcam only)
+## Tom (petcam only — capture and nothing else since 2026-11-08)
 
-Debian on the Pi, clone this repo, `cd petcam && make`, `petcam.service`
-(User=tom) points at the built binary; camera and YOLO model/labels are local
-(`~/petcam/{model,tolabel,training}` — the training data also exists on the
-laptop under `~/petcam-train`). Join the tailnet. Nothing else belongs on Tom.
+Debian on the Pi. Tom runs **two things**: `scripts/petcam.sh` (`rpicam-vid |
+ffmpeg` → `/dev/shm/petcam`, launched by cron, see `docs/petcam/crontab.txt`)
+and `petcam-static.service` (`python3 -m http.server 8081 --bind
+100.77.132.110 --directory /dev/shm/petcam`). No Go, no OpenCV, no model, no
+website, no unit for the gallery — the detector, the app and all petcam state
+(`~/petcam/{model,tolabel,training,shots}`) live on **Ralph** now, because the
+CSI camera is the only thing that cannot leave. Join the tailnet, give it a
+static IP, and that is the whole box.
+
+Packages: `ffmpeg python3` (`rpicam-apps` ships with Raspberry Pi OS).
+Rebuild detail and the rollback path: `docs/petcam/complete/tom-camera-appliance-2026-11-08.md`.
 
 ## Secrets — none are stored anywhere; regenerate each
 

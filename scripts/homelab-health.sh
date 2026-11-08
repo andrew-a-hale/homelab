@@ -133,10 +133,12 @@ boots=$(journalctl --list-boots -o json --no-pager 2>/dev/null |
 [ -n "$boots" ] || boots=-1
 printf 'boot=%s\n'      "$(uptime -s)"
 printf 'uptime=%s\n'    "$(uptime -p | sed 's/^up //')"
-printf 'svc=%s\n'       "$(systemctl is-active petcam 2>/dev/null)"
+printf 'svc=%s\n'       "$(systemctl is-active petcam-static 2>/dev/null)"
 printf 'rpicam=%s\n'    "$(pgrep -x rpicam-vid >/dev/null && echo up || echo down)"
 printf 'ffmpeg=%s\n'    "$(pgrep -x ffmpeg >/dev/null && echo up || echo down)"
-printf 'detect=%s\n'    "$(pgrep -f 'petcam-detect[.]py' >/dev/null && echo up || echo down)"
+# Tom is a camera appliance since 2026-11-08: capture + a dumb read-only static
+# server for /dev/shm/petcam. The detector and the app live on ralph.
+printf 'static=%s\n'    "$(pgrep -f 'http[.]server 8081' >/dev/null && echo up || echo down)"
 printf 'throttled=%s\n' "$(vcgencmd get_throttled 2>/dev/null | cut -d= -f2)"
 printf 'temp=%s\n'      "$(vcgencmd measure_temp 2>/dev/null | cut -d= -f2)"
 printf 'shot_age=%s\n'  "$(newest_age "$HOME/petcam/shots")"
@@ -152,6 +154,8 @@ for u in nginx cloudflared jellyfin qbittorrent-nox@qbittorrent; do
   printf 'svc=%s:%s\n' "$u" "$(systemctl is-active "$u" 2>/dev/null)"
 done
 printf 'proton0=%s\n' "$(ip link show proton0 >/dev/null 2>&1 && echo up || echo down)"
+# petcam state is on this box since 2026-11-08 (app :8082 behind nginx, detector).
+printf 'detect=%s\n' "$(pgrep -f 'petcam-detect[.]py' >/dev/null && echo up || echo down)"
 # /srv is the root fs on this box, /srv/media is the 3.6T USB library; the
 # awk dedupes so the root fs is not reported twice.
 df -P / /srv /srv/media 2>/dev/null |
@@ -170,14 +174,14 @@ check_tom() {
   emit PASS boot "up $(get uptime), booted $(get boot)"
 
   local svc; svc=$(get svc)
-  emit "$(svc_class "$svc")" service:petcam "$svc"
+  emit "$(svc_class "$svc")" service:petcam-static "$svc"
 
-  local r f d
-  r=$(get rpicam); f=$(get ffmpeg); d=$(get detect)
-  if [ "$r" = up ] && [ "$f" = up ] && [ "$d" = up ]; then
-    emit PASS capture "rpicam-vid=up ffmpeg=up detect=up"
+  local r f st
+  r=$(get rpicam); f=$(get ffmpeg); st=$(get static)
+  if [ "$r" = up ] && [ "$f" = up ] && [ "$st" = up ]; then
+    emit PASS capture "rpicam-vid=up ffmpeg=up static=up"
   else
-    emit FAIL capture "rpicam-vid=$r ffmpeg=$f detect=$d"
+    emit FAIL capture "rpicam-vid=$r ffmpeg=$f static=$st"
   fi
 
   local th temp
@@ -216,6 +220,13 @@ check_ralph() {
     unit=${line%%:*}; st=${line#*:}
     emit "$(svc_class "$st")" "service:$unit" "$st"
   done <<< "$(getall svc)"
+
+  local d; d=$(get detect)
+  if [ "$d" = up ]; then
+    emit PASS detector "petcam-detect.py up (snapshots + training pairs)"
+  else
+    emit FAIL detector "down — no detections, no new snapshots on the gallery"
+  fi
 
   local p0; p0=$(get proton0)
   if [ "$p0" = up ]; then
