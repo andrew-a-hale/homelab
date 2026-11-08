@@ -74,7 +74,11 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
   for `proton0`. Bind the network interface to `proton0` in its settings
   (`Session\Interface=proton0`; leak protection). The WebUI stays loopback with
   its own auth off; `/bt/` gets basic auth from nginx (`/etc/nginx/htpasswd`,
-  user `andy`, password from the pass/Proton Pass entry — see the secrets table).
+  user `andy`, password from the pass/Proton Pass entry — see the secrets table)
+  **and** an `if ($http_cf_ray) { return 404; }` guard, because `/bt/` sits on the
+  default server that the tunnel also routes to. Without it, the WebUI is public
+  behind basic auth: `curl https://andrewahale.com/bt/` → 401 means the guard is
+  missing; it must be 404.
   Torrent state is not preserved either: re-add what you still want.
 - **Proton VPN** — `wg-quick@proton0` with `/etc/wireguard/proton0.conf`
   (secret, see below), enabled at boot, plus `proton-guard.timer` (every 5 min)

@@ -21,7 +21,7 @@ Jellyfin + qBittorrent on **Ralph**, the always-on server. Verified
 |---|---|---|
 | LAN | `http://ralph/jf` | Jellyfin login |
 | Internet | `https://jellyfin.andrewahale.com` | Jellyfin login (no Cloudflare Access — see `../security/complete/public-ingress-2026-11-08.md`) |
-| LAN (qBittorrent) | `http://ralph/bt/` | nginx basic auth; the password is in **Proton Pass** (human credentials do not live in this repo or in `pass`). fail2ban bans a LAN client after 5 bad attempts (it cannot ban internet clients: `/bt/` is not tunnelled, so this is fine) |
+| LAN (qBittorrent) | `http://ralph/bt/` | nginx basic auth; not reachable through the tunnel (`/bt/` returns 404 for tunnel traffic); the password is in **Proton Pass** (human credentials do not live in this repo or in `pass`). fail2ban bans a LAN client after 5 bad attempts (it cannot ban internet clients: `/bt/` is not tunnelled, so this is fine) |
 
 The tunnel ingress points `jellyfin.andrewahale.com` **straight at
 `127.0.0.1:8096`**, not through nginx, because `BaseUrl=/jf` already carries the

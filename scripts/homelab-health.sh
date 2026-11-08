@@ -275,6 +275,12 @@ check_ingress() {
     code=$(curl -m "$HTTP_TIMEOUT" -s -o /dev/null -w '%{http_code}' "https://$site/" 2>/dev/null)
     emit "$(http_class "$code")" "http:$site" "${code:-timeout}"$([ "$code" = 000 ] && echo " (no response)")
   done
+  # qBittorrent's /bt/ lives on nginx's default server, which the tunnel routes to.
+  # It must answer 404 to tunnelled traffic (CF-Ray guard); 401 or 200 means the
+  # guard is gone and the WebUI is back on the public internet with auth only.
+  code=$(curl -m "$HTTP_TIMEOUT" -s -o /dev/null -w '%{http_code}' "https://andrewahale.com/bt/" 2>/dev/null)
+  [ "$code" = 404 ] && emit PASS "bt-guard" "404 (not tunnelled)" \
+    || emit FAIL "bt-guard" "${code:-timeout} — /bt/ answers through the tunnel"
   host_end
 }
 

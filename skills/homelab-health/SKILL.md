@@ -39,7 +39,8 @@ seconds, not minutes. Overridable with env vars: `TOM_HOST`, `RALPH_HOST`,
 | `frames` | tom | age of the newest file in `/dev/shm/petcam/frames`; capture is 1 fps, so >10 min means the pipeline is dead even if the processes linger |
 | `boots/24h` | tom | boots started in the last 24h, counted from `journalctl --list-boots -o json` (the `--since` flag is ignored by `--list-boots`, hence the JSON). >3 is the reboot bug flaring |
 | `auth/24h` | tom, ralph | failed SSH logins in the last 24h (`Failed password|Invalid user`). >20 is a WARN: the internet is trying, or something on the LAN is |
-| `bt-401` | ralph | 401s in `/var/log/nginx/access.log` (basic-auth failures on `/bt/`), whole log lifetime. Same threshold |
+| `bt-401` | ralph | 401s in `/var/log/nginx/access.log` (basic-auth failures on `/bt/`), whole log lifetime. Bots probing the old public `/bt/` path; the guard below now turns those into 404s |
+| `bt-guard` | ingress | `https://andrewahale.com/bt/` must be **404**. It sits on nginx's default server, which the tunnel routes to, so 401/200 here means the `CF-Ray` guard is gone and the qBittorrent WebUI is public again |
 | `fail2ban` | ralph | banned IPs right now, from `fail2ban-client status` (jails: `sshd`, `nginx-http-auth`, `jellyfin`). Informational |
 | `service:{nginx,cloudflared,jellyfin,qbittorrent-nox@qbittorrent}` | ralph | the public entry point and the apps behind it |
 | `proton0` | ralph | WireGuard link for qBittorrent leak protection; qBit is bound to it, so no `proton0` = no torrents |

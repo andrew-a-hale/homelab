@@ -31,4 +31,12 @@ from reality, which is exactly how a doc rots.
 
 - qBit's own WebUI stays `127.0.0.1:8081` on Ralph with auth off — the only
   door is nginx `/bt/`, LAN only, never through the Cloudflare tunnel.
+
+  > **Correction 2026-11-08:** "never through the tunnel" was **false**. The
+  > `/bt/` block lives on the `default_server`, which the tunnel routes to for
+  > `andrewahale.com`, `www` and `placetime`, so `https://andrewahale.com/bt/`
+  > answered 401 (basic auth only) on the public internet — 2667 logged `/bt/`
+  > hits in nginx's logs. Now guarded: `if ($http_cf_ray) { return 404; }` in the
+  > `/bt/` location (cloudflared always sets that header; `:80` is firewalled off
+  > the WAN so nothing else can). Public 404, LAN/tailnet still 401.
 - Rebuild path: `htpasswd`'s absence is now in `RUNBOOK.md`.

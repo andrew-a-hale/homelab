@@ -12,39 +12,26 @@ It should use the following:
 - Proton Pass
 - Cloudflare Tunnelling
 
-It is currently hosting a Website: andrewahale.com
+Everything should be documented, be agent friendly, and grounded with latest information by using Web Search.
 
-There is a security posture + open work in docs/security/README.md. Don't
-duplicate it here; the rules that matter day to day:
-- Nothing listens on the WAN. Ingress is one outbound Cloudflare tunnel on Ralph,
-  and origin services bind loopback.
+## Security Posture
+
+- Nothing listens on the WAN. Ingress is one outbound Cloudflare tunnel on Ralph, and origin services bind loopback.
 - Firewalls allow per service, never per subnet, and both hosts have ufw on.
-- Human credentials live in Proton Pass (machine/boot secrets in `pass` or on
-  disk, never in this repo — it is public).
+- Human credentials live in Proton Pass (machine/boot secrets in `pass` or on disk, never in this repo — it is public).
 - Tailnet SSH authenticates by identity, not keys: see docs/security/todo/
   lan-trust-2026-11-08.md before adding a node.
 
-There is a TODO.md that tracks the items to work on. These are high level items, and each will have there own docs and folders here.
-
-Everything should be documented, be agent friendly, and grounded with latest information by using Web Search.
-
 ## Where things run
 
-Tom (Raspberry Pi 5) now runs only the Petcam (camera, YOLO detector, and the web UI behind Cloudflare SSO).
-
-Jellyfin and Website are accessible off the network.
-Jellyfin is behind a secure password.
-Website is public, but the Petcam is behind Cloudflare SSO.
-qBittorrent is network only: its WebUI binds loopback on Ralph, nginx on `/bt/`
-puts basic auth in front, and ufw + the tunnel's ingress keep it off the WAN.
-There is no IP whitelist in qBittorrent itself (an earlier note here claimed
-one) — the scoping is the firewall and the ingress config.
+Tom (Raspberry Pi 5) now runs only the Petcam camera: it serves the 1 fps stream and stills on the tailnet (`:8081`), and Ralph pulls and proxies them.
+no detector, no web app, no nginx.
 
 Jason (Desktop) does YOLO model fine tuning for the Petcam.
 
 Rose (Laptop) uses jellyfin with TV in place of the Google Streamer TV solution temporarily.
 
-Ralph (Dell OptiPlex 7070 Micro, Arch + Guix) is the always-on server and the public gateway: Jellyfin, the media library, the website, and the only Cloudflare tunnel. See docs/ralph/README.md.
+Ralph (Dell OptiPlex 7070 Micro, Arch + Guix) is the always-on server and the public gateway: Jellyfin, qBittorrent, DHT Sensor, fail2ban, the media library, the website, and the only Cloudflare tunnel.
 
 ## Detailed Todos and Tickets
 
