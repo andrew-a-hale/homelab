@@ -26,7 +26,7 @@ State: `shots` 1.7M, `tolabel` 20K, `training` 94M (622 frames), `model` 25M,
 `detections.log` 7M (appended every 5 s, rolling 14 days).
 
 Tom↔Ralph is **wifi only** (`eth0` and `eno2` both DOWN), raw ~0.74 MB/s per
-`docs/ralph/todo/migration-2026-11-07.md`, 21 ms RTT. The still is 94 KB polled
+`docs/ralph/complete/migration-2026-11-07.md`, 21 ms RTT. The still is 94 KB polled
 every 5 s ≈ 19 KB/s ≈ 2.5% of the link; the HLS stream is another 200 kbps.
 Acceptable, but it is not free — see Risks.
 

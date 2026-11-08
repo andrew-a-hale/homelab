@@ -2,10 +2,13 @@
 
 ## Home Lab
 
-- [ ] Setup a daily task to check if all the systems are working
-  - [ ] Make a skill that documents the list of things to check and probably an uptime tool with logging
+- [x] Setup a daily task to check if all the systems are working
+  - [x] Make a skill that documents the list of things to check and probably an uptime tool with logging
+    — `scripts/homelab-health.sh` (one run = one line in `~/homelab-health.log`, the uptime
+    history) + `skills/homelab-health/SKILL.md`. Not yet scheduled on a timer; install steps
+    are in the skill.
 
-- [ ] Verify nginx.conf for jellyfin and qBittorrent on **Ralph** and commit the topology to the repo for simple bootstrap. This includes the hostname files for each of Tom, Jason, Rose, and Ralph.
+- [x] Verify nginx.conf for jellyfin and qBittorrent on **Ralph** and commit the topology to the repo for simple bootstrap. This includes the hostname files for each of Tom, Jason, Rose, and Ralph.
   - Note: the intermittent 502 completed task. Ralph's nginx + tunnel config now live in `docs/ralph/nginx-ralph.conf`, `docs/ralph/cloudflared-config.yaml`, `docs/ralph/cloudflared.service`.
 
 - [ ] Ensure this homelab is simple to bootstrap
@@ -24,7 +27,7 @@
 
 - [x] qBittorrent login is `andy`/`pancake` (nginx basic auth on `/bt/`; qBit lives on Ralph only — Tom's copy is retired)
 
-- [ ] Fix Tom restarts (parked 2026-11-07: Tom is no longer load bearing — petcam needs only ~90% uptime; crash capture stays armed, PSU/SD check is still a physical task) — **wifi cause eliminated, restarts still unexplained**. Scan wedge fixed (iwd backend since 2026-10-29: 0 `SCAN-FAILED` every boot, `wifi-guard` silent since 10-28 18:18 — docs/server/complete/wifi-scan-wedge-2026-10-31.md), but Tom still hard-resets ~hourly (19 boots on 2026-10-31, gaps 77 s–2.5 h) — watchdog reset with no shutdown message, `rcu_preempt` stall on CPU 3 (never any other core) in ~⅓ of boots, silent otherwise. Capture is live since 2026-10-31 (ramoops/pstore + `panic=15` + `panic_on_rcu_stall`, `scripts/tom-trace.sh`); bootloader updated to 2026-09-25. Next: read the first pstore dump — archived automatically to /var/lib/systemd/pstore/ — and compare `/var/log/tom-trace.log` against the crash gap. Still open: PSU/cable check (owner, physical) and the SD card as suspect (docs/server/todo/tom-reboots-hang-2026-10-31.md)
+- [ ] Fix Tom restarts — **cause identified 2026-11-08, not fixed** (Tom is no longer load bearing: petcam needs only ~90% uptime). The first pstore dump proves a CPU 3 hard lockup downstream of the imx708 failing I²C writes on the RP1 bus: nothing logged for 148 s, CPU 3 never answers the NMI backtrace, then `i2c_designware … controller timed out` / `Failed to write reg 0x0342 error = -5` / `start_streaming failed`, then our own `panic_on_rcu_stall=1` panics the box. Silently wedged before that (wifi and the SCAN-FAILED scan wedge are ruled out — 0 occurrences since iwd, docs/server/complete/wifi-scan-wedge-2026-10-31.md). Still ~12 resets/day (87 boots in 7 days). Remaining steps are physical: reseat the CSI ribbon, then replace it, then the module — or switch to a USB UVC webcam, which takes RP1 I²C out of the path. Keep `panic_on_rcu_stall=1` (it produces the dump). Details in docs/server/todo/tom-reboots-hang-2026-10-31.md
 
 - [ ] Simplify the homelab now that Tom is no longer load bearing (petcam needs only ~90% uptime)
   - [ ] Make Tom a camera appliance: only `rpicam-vid` stays, detector + app + state move to Ralph (docs/petcam/todo/tom-camera-appliance-2026-11-08.md)
