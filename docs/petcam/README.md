@@ -108,10 +108,9 @@ Then kill each process once: systemd revives the app, cron revives capture and
   `/label`-named pairs, and `_neg` rejects — unverified auto-labels are dropped.
 - `petcam-detect.py --checknames` regression-checks the legacy hue classifier
   over the named corpus; `--selftest` covers classifier + label math + empty frame.
-- **Review filters** (2026-11-08): the review queue has all / unreviewed /
-  flagged views. Flagged = a Jev disagreement (below) or a hue-vs-label
-  mismatch, sorted first. Reviewing a frame (✓ reviewed, no cat, delete)
-  clears its flag — the second-look queue only holds what still needs eyes.
+- **Review filters** (2026-11-08): the review queue has all / unreviewed
+  views. Hue-vs-label mismatches and audit flags sort first, and a frame can
+  be pushed back into `/label` for a fresh hand label (R or the button).
 
 ## Stability note
 The 24/7 `rpicam-vid` pipeline has been identified as the trigger for Tom's
@@ -213,3 +212,6 @@ cost and the inverted-coat-description lesson in
   ~134 detections/day). Per-frame Jev was rejected: ~$10/day at 1 fps.
   **Retired 2026-11-08**: the owner confirmed 0 of Jev's flags were real, so
   Jev gets no live role — audit runs only (see the complete/ doc).
+  Note: YOLO's 93% was measured on its own training data; a fair held-out
+  comparison (day-grouped split, retrain, CIs + McNemar) is planned in
+  [todo/yolo-jev-model-selection-2026-11-08.md](todo/yolo-jev-model-selection-2026-11-08.md).
