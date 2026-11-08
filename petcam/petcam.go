@@ -30,6 +30,9 @@ const (
 	trainLbl      = "/home/tom/petcam/training/labels"
 	// /review: stems the owner has verified by eye; anything absent still needs a look.
 	reviewedFile = "/home/tom/petcam/training/reviewed.txt"
+	// /review flags: stems queued for a second look (petcam-jev.py writes them;
+	// one per line, stem first, rest is the human-readable reason).
+	flagsFile = "/home/tom/petcam/training/flags.txt"
 	// per-frame colour-hint stats cache (*.json never matches the training rsync)
 	reviewStatsFile = "/home/tom/petcam/training/review-stats.json"
 )
@@ -240,6 +243,10 @@ type reviewItem struct {
 	URL   string      `json:"url"`
 	Boxes []reviewBox `json:"boxes"`
 	Done  bool        `json:"done"`
+	// Flagged: queued for a second look (Jev batch or a hue disagreement);
+	// Flag is the reason text, e.g. "jev=none p=pan0.21 wil0.11 non0.68".
+	Flagged bool   `json:"flagged"`
+	Flag    string `json:"flag,omitempty"`
 }
 
 // hueStats mirrors petcam-detect.py's classify() over one box crop: fraction of
@@ -322,6 +329,45 @@ func writeReviewed(m map[string]bool) {
 	_ = os.WriteFile(reviewedFile, []byte(strings.Join(names, "\n")+"\n"), 0o644)
 }
 
+// loadFlags: stem -> reason from flags.txt (`stem reason...` per line). The
+// petcam-jev.py batch writes it; review actions clear individual entries.
+func loadFlags() map[string]string {
+	m := map[string]string{}
+	if data, err := os.ReadFile(flagsFile); err == nil {
+		for _, line := range strings.Split(string(data), "\n") {
+			fields := strings.Fields(line)
+			if len(fields) == 0 {
+				continue
+			}
+			m[fields[0]] = strings.Join(fields[1:], " ")
+		}
+	}
+	return m
+}
+
+func writeFlags(m map[string]string) {
+	lines := make([]string, 0, len(m))
+	for k, v := range m {
+		if v == "" {
+			lines = append(lines, k)
+		} else {
+			lines = append(lines, k+" "+v)
+		}
+	}
+	sort.Strings(lines)
+	_ = os.WriteFile(flagsFile, []byte(strings.Join(lines, "\n")+"\n"), 0o644)
+}
+
+// clearFlag drops one stem's flag; a human has now looked at the frame.
+func clearFlag(stem string) {
+	flags := loadFlags()
+	if _, ok := flags[stem]; !ok {
+		return
+	}
+	delete(flags, stem)
+	writeFlags(flags)
+}
+
 // hueCacheEntry: colour-hint stats for one frame, invalidated when the image
 // or label file changes or the box count differs. Without this cache,
 // /review/list JPEG-decoded the whole corpus on every load (7.5 s at 418
@@ -357,6 +403,7 @@ func handleReview(w http.ResponseWriter, r *http.Request) {
 // frames), unreviewed before done. Newest first within each group.
 func handleReviewList(w http.ResponseWriter, r *http.Request) {
 	reviewed := loadReviewed()
+	flags := loadFlags()
 	names, _ := filepath.Glob(filepath.Join(trainImg, "*.jpg"))
 	sort.Sort(sort.Reverse(sort.StringSlice(names)))
 	items := make([]reviewItem, 0, len(names))
@@ -437,7 +484,7 @@ func handleReviewList(w http.ResponseWriter, r *http.Request) {
 			}
 			boxes = append(boxes, reviewBox{bx.i, bx.rect, bx.cid, o, g})
 		}
-		items = append(items, reviewItem{base, "/review/img/" + base, boxes, reviewed[stem]})
+		items = append(items, reviewItem{base, "/review/img/" + base, boxes, reviewed[stem], flags[stem] != "", flags[stem]})
 	}
 	if cacheDirty {
 		writeHueCache(cache)
@@ -445,6 +492,9 @@ func handleReviewList(w http.ResponseWriter, r *http.Request) {
 	sort.SliceStable(items, func(i, j int) bool {
 		score := func(it reviewItem) int {
 			s := 0
+			if it.Flagged {
+				s += 10 // Jev disagrees with the label: the whole point of the flag pass
+			}
 			if it.Done {
 				s -= 100
 			}
@@ -550,6 +600,7 @@ func handleReviewNegative(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeLabelLines(filepath.Join(trainLbl, stem+".txt"), nil)
+	clearFlag(stem) // owner says no cat: the label question is settled
 	http.Redirect(w, r, "/review", http.StatusSeeOther)
 }
 
@@ -561,6 +612,7 @@ func handleReviewDeleteFrame(w http.ResponseWriter, r *http.Request) {
 	reviewed := loadReviewed()
 	delete(reviewed, stem)
 	writeReviewed(reviewed)
+	clearFlag(stem)
 	http.Redirect(w, r, "/review", http.StatusSeeOther)
 }
 
@@ -570,6 +622,7 @@ func handleReviewDone(w http.ResponseWriter, r *http.Request) {
 	reviewed := loadReviewed()
 	if r.FormValue("done") == "1" {
 		reviewed[stem] = true
+		clearFlag(stem) // verified by eye: the second-look queue is done with it
 	} else {
 		delete(reviewed, stem)
 	}

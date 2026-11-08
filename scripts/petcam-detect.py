@@ -11,8 +11,10 @@ called the empty cat bed a cat; YOLOv8n sorts that out.
 Usage: python3 petcam-detect.py          # loop (cron runs this)
        python3 petcam-detect.py --once    # single pass (manual testing)
        python3 petcam-detect.py --selftest
+       python3 petcam-detect.py --score-corpus [out.json]  # offline: YOLO+hue over training/
 """
 
+import json
 import os
 import sys
 import time
@@ -163,7 +165,7 @@ def detect(net, img, roi=None):
     idx = cv2.dnn.NMSBoxes(boxes, confs, MIN_CONF, 0.45) if boxes else []
     out = []
     for i in np.array(idx).flatten():
-        out.append((boxes[i], clses[i]))
+        out.append((boxes[i], clses[i], confs[i]))
     return out
 
 
@@ -285,7 +287,7 @@ def pass_once(net):
         return
     labels = []
     keep = []
-    for b, cls in dets:
+    for b, cls, _conf in dets:
         # base COCO model (cls not in CLASS_NAME): name by fur colour
         cat = CLASS_NAME.get(
             cls,
@@ -301,6 +303,51 @@ def pass_once(net):
     if keep:
         save(img, keep, labels)
         log_raw(f"saved latest {', '.join(sorted(set(labels)))}")
+
+
+def score_corpus(out_path, img_dir=None):
+    """offline scorer for the corpus: YOLO + hue per frame -> one JSON.
+
+    Writes {stem: {yolo, conf, boxes, hue}} where yolo is the deployed model's
+    class name (None when nothing passes MIN_CONF), conf the top detection
+    score, and hue the colour-classifier name for that box. Feeds the Jev
+    comparison (scripts/petcam-jev.py) and the /review flag pass. Runs where the
+    model lives (Tom); never writes training or tolabel data.
+    """
+    img_dir = img_dir or TRAIN_IMG
+    deployed_min = MIN_CONF
+    real_harvest = harvest
+    globals()["MIN_CONF"] = 0.05  # report the top score even below the deployed bar
+    globals()["harvest"] = lambda *a, **k: None  # scoring must not feed /label
+    net = cv2.dnn.readNet(MODEL)
+    out = {}
+    try:
+        for f in sorted(os.listdir(img_dir)):
+            if not f.endswith(".jpg"):
+                continue
+            stem = f[:-4]
+            img = cv2.imread(os.path.join(img_dir, f))
+            if img is None:
+                continue
+            dets = detect(net, img)
+            entry = {"yolo": None, "conf": 0.0, "boxes": len(dets), "hue": None}
+            if dets:
+                box, cls, conf = max(dets, key=lambda d: d[2])
+                entry["conf"] = round(conf, 3)
+                if conf >= deployed_min:
+                    entry["yolo"] = CLASS_NAME.get(cls)
+                entry["hue"] = NAME.get(
+                    classify(img[max(box[1], 0) : box[3], max(box[0], 0) : box[2]])[0],
+                    "unknown",
+                )
+            out[stem] = entry
+            print(f"score {stem}: {entry}", flush=True)
+    finally:
+        globals()["MIN_CONF"], globals()["harvest"] = deployed_min, real_harvest
+    with open(out_path, "w") as f:
+        json.dump(out, f, indent=1)
+    named = sum(1 for e in out.values() if e["yolo"])
+    print(f"score-corpus: {len(out)} frames, {named} detected at MIN_CONF={deployed_min} -> {out_path}", flush=True)
 
 
 def checknames():
@@ -395,6 +442,11 @@ if __name__ == "__main__":
     if "--selftest" in sys.argv:
         selftest()
         sys.exit(0)
+    if "--score-corpus" in sys.argv:
+        i = sys.argv.index("--score-corpus")
+        out_path = sys.argv[i + 1] if i + 1 < len(sys.argv) and not sys.argv[i + 1].startswith("-") else os.path.join(os.path.dirname(TRAIN_IMG), "yolo-scores.json")
+        score_corpus(out_path)
+        sys.exit(0)
     if "--capture" in sys.argv:
         img = cv2.imread(STILL)
         if img is None:
@@ -407,7 +459,7 @@ if __name__ == "__main__":
         stem = os.path.join(TOLABEL, ts + "_manual")
         cv2.imwrite(stem + ".jpg", img)
         if dets:
-            (x1, y1, x2, y2), cls = dets[0]
+            (x1, y1, x2, y2), cls, _conf = dets[0]
             name = propose_name(cls, img, (x1, y1, x2, y2))
             with open(stem + ".txt", "w") as f:
                 f.write(f"{x1} {y1} {x2} {y2} {name}\n")

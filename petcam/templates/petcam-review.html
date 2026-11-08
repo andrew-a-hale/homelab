@@ -29,9 +29,9 @@
         <a href="/review">review</a>
     </nav>
     <p>Verify the auto-labeled training corpus before a retrain. Red dashed boxes
-       disagree with the colour hint (orange fraction vs 0.18) — look at those
-       first, but the hint is lighting-fragile: it sorts this queue, it never
-       decides a label. Keys: ← → move · D reviewed · N no cat · X delete frame.</p>
+       disagree with the colour hint (orange fraction vs 0.18); ⚑ frames were
+       flagged by the Jev pass — look at those first, but neither hint decides a
+       label. Keys: ← → move · D reviewed · N no cat · X delete frame.</p>
     <div id="wrap">
         <img id="img" alt="training frame">
     </div>
@@ -42,23 +42,37 @@
         <button id="del">delete frame (X)</button>
         <button id="prev">← prev</button>
         <button id="next">next →</button>
-        <button id="filter">flagged only</button>
+        <span id="filters">filter:
+            <button data-f="all" class="fbtn">all</button>
+            <button data-f="unreviewed" class="fbtn">unreviewed</button>
+            <button data-f="flagged" class="fbtn">flagged</button>
+        </span>
         <span id="info">loading corpus…</span>
     </div>
     <script>
         const NAME = ["pancake", "willow"];
-        let items = [], view = [], idx = 0, onlyFlagged = false, cur = null;
+        let items = [], view = [], idx = 0, filter = "all", cur = null;
         const img = document.getElementById("img");
         const wrap = document.getElementById("wrap");
 
         const hueSays = b => b.orange > 0.18 ? 0 : 1;
         const boxFlagged = b => hueSays(b) !== b.cid;
-        const itemFlagged = it => it.boxes.length > 1 || it.boxes.some(boxFlagged);
+        const itemFlagged = it => it.flagged || it.boxes.length > 1 || it.boxes.some(boxFlagged);
 
         function buildView() {
             const keep = cur?.name;
-            view = onlyFlagged ? items.filter(it => itemFlagged(it) && !it.done) : items.slice();
+            view = items.filter(it =>
+                filter === "unreviewed" ? !it.done :
+                filter === "flagged" ? itemFlagged(it) : true);
             idx = keep ? Math.max(view.findIndex(it => it.name === keep), 0) : 0;
+        }
+
+        function setFilter(f) {
+            filter = f;
+            document.querySelectorAll(".fbtn").forEach(b =>
+                b.style.fontWeight = b.dataset.f === f ? "bold" : "normal");
+            buildView();
+            render();
         }
 
         function layoutBoxes() {
@@ -82,7 +96,7 @@
             bar.innerHTML = "";
             if (!cur) {
                 img.style.display = "none";
-                info.textContent = onlyFlagged ? "no flagged frames left" : "corpus empty";
+                info.textContent = "no frames match the " + filter + " filter";
                 return;
             }
             img.style.display = "block";
@@ -90,6 +104,7 @@
             layoutBoxes();
             info.textContent = cur.name + "   " + (idx + 1) + "/" + view.length +
                 "   ·   " + items.filter(it => it.done).length + "/" + items.length + " reviewed" +
+                (cur.flagged ? "   ⚑ " + cur.flag : "") +
                 (cur.done ? "   ✓" : "");
             cur.boxes.forEach((b, i) => {
                 const row = document.createElement("div");
@@ -157,12 +172,7 @@
         document.getElementById("del").onclick = deleteFrame;
         document.getElementById("prev").onclick = () => step(-1);
         document.getElementById("next").onclick = () => step(1);
-        document.getElementById("filter").onclick = e => {
-            onlyFlagged = !onlyFlagged;
-            e.target.textContent = onlyFlagged ? "show all" : "flagged only";
-            buildView();
-            render();
-        };
+        document.querySelectorAll(".fbtn").forEach(b => b.onclick = () => setFilter(b.dataset.f));
         img.onload = layoutBoxes;
 
         document.addEventListener("keydown", e => {

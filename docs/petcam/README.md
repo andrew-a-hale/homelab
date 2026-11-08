@@ -108,6 +108,10 @@ Then kill each process once: systemd revives the app, cron revives capture and
   `/label`-named pairs, and `_neg` rejects — unverified auto-labels are dropped.
 - `petcam-detect.py --checknames` regression-checks the legacy hue classifier
   over the named corpus; `--selftest` covers classifier + label math + empty frame.
+- **Review filters** (2026-11-08): the review queue has all / unreviewed /
+  flagged views. Flagged = a Jev disagreement (below) or a hue-vs-label
+  mismatch, sorted first. Reviewing a frame (✓ reviewed, no cat, delete)
+  clears its flag — the second-look queue only holds what still needs eyes.
 
 ## Stability note
 The 24/7 `rpicam-vid` pipeline has been identified as the trigger for Tom's
@@ -181,3 +185,27 @@ Full procedure in `skills/petcam-retrain/SKILL.md`.
   paths stay absolute. Detector auto-detects COCO-84 / 1-class / 2-class
   ONNX outputs. Venv: `~/petcam-train/.venv` (Python 3.12; system 3.14 has no
   torch wheels).
+
+### Jev second-opinion pass (2026-11-08)
+
+`typesafe/jev-1.14` (OpenRouter Decisions API) sees images and answers typed
+questions with probabilities — tried on the corpus 2026-11-08, it named every
+cat frame right, including backlit silhouettes where the hue classifier fails,
+and caught a mislabeled negative. Trial details in
+`complete/jev-corpus-flag-2026-11-08.md`. The pieces:
+
+- `scripts/petcam-detect.py --score-corpus [out.json]` (on Tom, where the ONNX
+  lives): YOLO class/conf + hue name for every corpus frame → JSON for offline
+  comparison. Read-only; never writes training or tolabel data.
+- `scripts/petcam-jev.py` (anywhere with the OpenRouter key in
+  `$OPENROUTER_API_KEY` or `pass dev/openrouter`): one Jev request per frame
+  (noul "cat visible" + choice `pancake/willow/none` + box), writes
+  `jev-scores.json` + `flags.txt`, prints a label-vs-Jev-vs-YOLO report.
+  `--from-tom` rsyncs the corpus first, `--push-flags` copies flags.txt to Tom.
+  ~$0.00012/frame (~2,850 input tokens, output free).
+- `~/petcam/training/flags.txt` (`stem reason` per line) feeds the /review
+  flagged filter; the app clears a flag when the frame is reviewed/negated/
+  deleted. Regenerate flags by re-running the batch.
+- Cascade shape if it goes live: YOLO keeps detection (free, local), Jev names
+  the detected cat (~$0.00012 per detection — detections are a few per hour,
+  not per frame).
