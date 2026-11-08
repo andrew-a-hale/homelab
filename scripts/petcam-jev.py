@@ -48,8 +48,8 @@ QUESTIONS = {
         "type": "choice",
         "instructions": "Which cat is in this photo?",
         "criteria": {
-            "pancake": "Pancake: the grey cat.",
-            "willow": "Willow: the orange ginger cat.",
+            "pancake": "Pancake: the orange ginger cat.",
+            "willow": "Willow: the grey/brown tabby cat.",
             "none": "No cat is visible in the photo.",
         },
     },
