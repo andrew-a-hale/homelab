@@ -51,8 +51,9 @@ Read them before running; they wipe `/dev/nvme0n1`.
 ## Open questions
 
 - qBittorrent runs here behind Proton WireGuard (`proton0`, `Table=off`, one uid
-  rule — the VPN serves qBit only). Tom's qBit/Proton stack still to be retired
-  in `todo/migration-2026-11-07.md`.
+  rule — the VPN serves qBit only), reached at `http://ralph/bt/` with basic
+  auth `andy`/`pancake`. Tom's qBit/Proton stack is gone (binary, unit and nginx
+  removed 2026-11-08, no `/bt/` on Tom).
 - Wired ethernet: not available yet. Every public request and every Jellyfin
   stream crosses this one wifi link, and Tom→Ralph measured **0.74 MB/s**.
 - DHT calibration: Ralph reads ~2.8°C cooler than Tom's sensor in the same room.

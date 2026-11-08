@@ -26,8 +26,8 @@ the uplink, which is exactly why the tailnet name is the default.
 > **Tom's job now:** petcam only — camera, `petcam.sh`, `petcam-detect.py`, its
 > YOLO model, and the second instance of the Go web app that serves
 > `petcam.andrewahale.com`. Jellyfin was disabled on Tom 2026-11-07 and `/jf/`
-> removed from its nginx. qBittorrent (`/bt/`, LAN only) is still on Tom pending
-> the Proton VPN migration.
+> removed from its nginx. qBittorrent (`/bt/`, LAN only) now lives on Ralph;
+> Tom's copy is gone (no binary, no unit).
 >
 > Tom's DHT sensor reads ~3°C off versus Ralph's in the same room; Ralph's is
 > the one now published. The `static/dht.json` committed in the website repo is
@@ -84,9 +84,11 @@ User decision — it's a gaming rig. Also the most expensive option per year.
 2. ~~rsync library + jellyfin config → Pi, install jellyfin~~ **done**:
    3GB library + config (user, libraries, DLNA plugin) live on the Pi,
    `http://tom/jf` (BaseUrl `/jf`), unit `jellyfin` enabled at boot.
-3. ~~qBittorrent-nox on the Pi bound to protonvpn~~ **done**: unit
-   `qbittorrent-nox@tom`, WebUI 127.0.0.1:8081 loopback-only, external address
-   = Proton exit. `scripts/grab*` reach it over `ssh tom`.
+3. ~~qBittorrent-nox on the Pi bound to protonvpn~~ **done, then superseded
+   2026-11-08**: qBittorrent and its VPN moved to Ralph (`http://ralph/bt/`);
+   Tom has no qBittorrent binary or unit left. Was: unit `qbittorrent-nox@tom`,
+   WebUI 127.0.0.1:8081 loopback-only, external address = Proton exit. The
+   `grab` scripts now target Ralph's loopback (they are not committed here).
 4. (subsumed by 3) WebUI stays loopback + ssh-wrapped calls.
 5. ~~Desktop: stop/disable jellyfin + qbittorrent~~ **done** 2026-10-21.
    Desktop's 2TB stays as backup/overflow (docs/backups unchanged).

@@ -57,8 +57,10 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
   `systemctl enable --now jellyfin`.
 - **qBittorrent** — `qbittorrent-nox@qbittorrent`, whose `ExecStartPre` waits
   for `proton0`. Bind the interface to `10.2.0.2` in its settings (leak
-  protection) and set the web login (tom/pancake). Torrent state is not
-  preserved either: re-add what you still want.
+  protection) and set the web login to `andy`/`pancake` in
+  `/etc/nginx/htpasswd` (`*/bt/` basic auth; qBit's own WebUI is
+  localhost-only with auth off). Torrent state is not preserved either: re-add
+  what you still want.
 - **Proton VPN** — `wg-quick@proton0` with `/etc/wireguard/proton0.conf`
   (secret, see below), enabled at boot, plus `proton-guard.timer` (every 5 min) to
   re-raise `proton0` if it ever drops.
@@ -96,7 +98,10 @@ laptop under `~/petcam-train`). Join the tailnet. Nothing else belongs on Tom.
 | Tailscale node keys | `/var/lib/tailscale` | `tailscale up` + approve in the admin console (or auth key) |
 | GitHub push key | Tom's `~/.ssh/id_ed25519` | `ssh-keygen` + add pubkey to the GitHub account |
 | Jellyfin users | `/var/lib/jellyfin` | first-run wizard / admin reset — passwords are gone, that is the deal |
-| qBittorrent login + state | `/var/lib/qbittorrent-nox` | set login fresh, re-add torrents |
+| qBittorrent login + state | `/var/lib/qbittorrent` | set login fresh (`andy`/`pancake` in `/etc/nginx/htpasswd`), re-add torrents |
+
+Tom has no qBittorrent at all since 2026-11-08: binary, unit and nginx removed
+(`qbittorrent-nox@tom` is `not-found`).
 | SSH host keys | `/etc/ssh` | regenerated on install; refresh known_hosts |
 | Router admin | sticker / ISP account | physical |
 

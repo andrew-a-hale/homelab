@@ -52,7 +52,9 @@ The homelab must be simple to bootstrap at any time. If the Raspberry Pi dies it
 
 ## Amp
 
-Do not use ORBS. Only use the runner to connect to Jason to ssh into Tom.
+Do not use ORBS — never, including self-hosted providers. Depend on runners
+directly: `amp --no-tui` on Jason, which reaches Tom and Ralph over the tailnet.
+See docs/amp/README.md.
 
 ## Deployment
 

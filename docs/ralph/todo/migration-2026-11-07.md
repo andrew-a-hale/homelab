@@ -10,7 +10,7 @@ only the petcam. `RUNBOOK.md` rebuilds it all.
 | Jellyfin | `jellyfin.service`, port 8096 | config `/var/lib/jellyfin` (95M), libraries: `/mnt/storage/media/{movies,tv}` |
 | Media | **Ralph** `/srv/media` (was Jason `192.168.1.181:/mnt/storage` over NFS4 — copy verified by checksum and the Jason copy deleted 2026-11-07; `backup` (389M) remains there and the NFS export stays) | 59G total: 12G movies, 47G tv, 61 files |
 | nginx | `:80`, single `sites-enabled/default` | proxies `/jf/` → 8096, `/bt/` → 8081 with basic auth |
-| qBittorrent | `qbittorrent-nox@tom`, `:8081`, bound to `10.2.0.2` | Proton VPN split-tunnel, leak protection via interface binding |
+| qBittorrent | `qbittorrent-nox@qbittorrent`, `:8081`, bound to `10.2.0.2` | Proton VPN split-tunnel, leak protection via interface binding (Tom's copy removed 2026-11-08) |
 | Proton VPN | `me.proton.vpn.split_tunneling.service` | plus `/usr/local/bin/cloudflared-bypass.sh` to route cloudflared over the bare ISP |
 | Website | Go binary `andrewahale.com` on `127.0.0.1:8080` | **not proxied by nginx** — nginx has no vhost for it |
 | Cloudflare tunnel | **not on Tom** | nothing named cloudflared is running here; only the bypass script exists |

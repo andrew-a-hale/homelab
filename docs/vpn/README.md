@@ -31,6 +31,11 @@ Three orthogonal jobs, three tools — no shared switch:
 
 ## tom (the Pi)
 
+> **Superseded 2026-11-08:** the VPN on this box is retired along with
+> qBittorrent — both moved to Ralph (WireGuard `wg-quick@proton0`, uid-scoped
+> split tunnel). See `docs/ralph/complete/qbittorrent-vpn-2026-11-07.md`. Tom
+> runs petcam only.
+
 - `proton-vpn-cli` 1.0.5 + `proton-vpn-daemon` 0.13.8 from Proton's Debian repo
   (arm64 works). Connected with `protonvpn connect --country Switzerland --p2p`; a 5-min cron
   watchdog keeps `proton0` up (see `crontab -l`). **Cron needs

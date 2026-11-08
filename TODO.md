@@ -22,11 +22,12 @@
   - [x] Host firewall on Ralph (ufw: LAN + tailnet trusted, tailscale UDP, no WAN inbound, 2026-11-07)
   - [x] Secrets are not backed up by design; `RUNBOOK.md` covers regenerating the stack and every secret (media is the one no-second-copy item)
 
-- [x] Change qBittorrent login to tom/pancake (nginx basic auth on `/bt/`, 2026-11-07)
+- [x] qBittorrent login is `andy`/`pancake` (nginx basic auth on `/bt/`; qBit lives on Ralph only — Tom's copy is retired)
 
 - [ ] Fix Tom restarts (parked 2026-11-07: Tom is no longer load bearing — petcam needs only ~90% uptime; crash capture stays armed, PSU/SD check is still a physical task) — **wifi cause eliminated, restarts still unexplained**. Scan wedge fixed (iwd backend since 2026-10-29: 0 `SCAN-FAILED` every boot, `wifi-guard` silent since 10-28 18:18 — docs/server/complete/wifi-scan-wedge-2026-10-31.md), but Tom still hard-resets ~hourly (19 boots on 2026-10-31, gaps 77 s–2.5 h) — watchdog reset with no shutdown message, `rcu_preempt` stall on CPU 3 (never any other core) in ~⅓ of boots, silent otherwise. Capture is live since 2026-10-31 (ramoops/pstore + `panic=15` + `panic_on_rcu_stall`, `scripts/tom-trace.sh`); bootloader updated to 2026-09-25. Next: read the first pstore dump — archived automatically to /var/lib/systemd/pstore/ — and compare `/var/log/tom-trace.log` against the crash gap. Still open: PSU/cable check (owner, physical) and the SD card as suspect (docs/server/todo/tom-reboots-hang-2026-10-31.md)
 
 - [ ] Simplify the homelab now that Tom is no longer load bearing (petcam needs only ~90% uptime)
+  - [ ] Make Tom a camera appliance: only `rpicam-vid` stays, detector + app + state move to Ralph (docs/petcam/todo/tom-camera-appliance-2026-11-08.md)
 
 ## Decided not to do (2026-11-07)
 
@@ -40,6 +41,13 @@
   ethernet, MEBx setup and a strong password (it is a backdoor by design) just to
   avoid walking to the closet on a rare bad boot. Keyboard + monitor on the shelf
   instead; revisit only if Ralph becomes physically unreachable.
+- **Self-hosted orbs** (2026-11-08): never — runners only. The `home-orbs`
+  provider was registered on Amp's side but never had anything behind it (no
+  controller, no dispatch script, no token in Amp's store, and Ralph has no `amp`
+  CLI at all). Rebuilding it meant an Amp CLI + container runtime +
+  `ORB_OPERATION` script + orb type + supervised unit on Ralph, to replace what
+  the Jason runner already does. See
+  `docs/amp/complete/no-orbs-runners-only-2026-11-08.md`.
 
 ## Purchases
 

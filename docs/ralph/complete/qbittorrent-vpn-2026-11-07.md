@@ -50,7 +50,8 @@ traffic fails. Fail-closed.
   resolver and never touch the ISP's DNS. Fail-closed like the rest: tunnel
   down → lookups fail → torrents stall instead of leaking.
 - `qbittorrent-nox@qbittorrent` enabled; drop-in waits for `proton0` before
-  start. WebUI on `127.0.0.1:8081`, nginx `/bt/` with Tom's htpasswd.
+  start. WebUI on `127.0.0.1:8081`, nginx `/bt/` with basic auth
+  `andy`/`pancake` (`/etc/nginx/htpasswd`; changed 2026-11-08, was `tom`).
 - `/srv/media/{movies,.incoming}` owned `qbittorrent:jellyfin`, `g+rwX`, default
   ACL — Jellyfin reads new downloads without a chown.
 - `proton-guard.sh` + `proton-guard.timer` (5 min) keep the tunnel up.

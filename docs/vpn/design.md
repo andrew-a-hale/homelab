@@ -50,6 +50,9 @@ questions and should not share a switch.
 
 ## Tom
 
+> **Superseded 2026-11-08:** qBittorrent and its Proton tunnel are on Ralph now
+> (`docs/ralph/complete/qbittorrent-vpn-2026-11-07.md`); Tom's copy is removed.
+
 - Official Proton CLI connected (auto-reconnects; arm64 package confirmed in
   Proton's repo, 2026-10-22). qBittorrent (`qbittorrent-nox@tom`) is
   **interface-bound to `proton0`** (rename from the old wg-quick interface
