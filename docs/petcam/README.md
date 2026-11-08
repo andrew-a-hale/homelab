@@ -1,66 +1,94 @@
 # Pet Cam — from-scratch rebuild
 
-Everything needed to rebuild the pet cam on a wiped Pi: the app, the capture
-and detector scripts, the unit, and the config references. All of it is in this
-repo (`petcam/` + `scripts/`). The website source has its own repo
-(`git@github.com:andrew-a-hale/andrewahale.com.git`) — everything else is here.
+Two boxes, one pet cam since 2026-11-08: **Tom** is a camera appliance (capture
+plus a static file server) and **Ralph** holds every stateful part (detector,
+app, gallery, training corpus). See
+[`complete/tom-camera-appliance-2026-11-08.md`](complete/tom-camera-appliance-2026-11-08.md)
+for the why, the measurements and the rollback.
 
-Petcam used to be one file inside the website binary; since 2026-11-07 it is a
-standalone app, so a petcam change cannot break the public site build
+Everything needed to rebuild it is in this repo (`petcam/` + `scripts/`). The
+website source has its own repo (`git@github.com:andrew-a-hale/andrewahale.com.git`)
+— everything else is here. Petcam used to be one file inside the website binary;
+since 2026-11-07 it is a standalone app, so a petcam change cannot break the
+public site build
 ([`complete/standalone-app-2026-11-07.md`](complete/standalone-app-2026-11-07.md)).
 
 ## What runs where
 
 | Piece | Where | Notes |
 |---|---|---|
-| `petcam.sh` | `~/projects/homelab/scripts/petcam.sh` | always-on capture supervisor: 720p@1fps capture → 480p HLS stream + 1fps still; relaunches dead pipeline (60 s backoff if it flaps), logs to `~/petcam/logs/` |
-| `petcam-detect.py` | `~/projects/homelab/scripts/petcam-detect.py` | 5 s loop, multi-pass: movement diff → YOLOv8n (2-class: pancake/willow), writes shots + log |
-| `petcam` (app) | `~/projects/homelab/petcam/` → `/etc/systemd/system/petcam.service` | standalone Go binary (stdlib only, templates embedded), gallery `/`, `/live`, `/log`, `/label`, `/review`; binds **tailnet only** `100.77.132.110:8080` |
-| nginx (Ralph) | `/etc/nginx/conf.d/petcam.conf` | `petcam.andrewahale.com` → `100.77.132.110:8080`; the tunnel points at Ralph nginx, so Tom runs **no** web server |
-| cron | see `crontab.txt` | capture + detector `@reboot` + 2-min watchdogs (the app is a systemd unit now) |
+| `petcam.sh` | **Tom**, `~/projects/homelab/scripts/petcam.sh` | always-on capture supervisor: 720p@1fps capture → 480p HLS + 1fps still in `/dev/shm/petcam`; relaunches dead pipelines (60 s backoff if it flaps), logs to `~/petcam/logs/`. Byte-identical since before the split |
+| `petcam-static.service` | **Tom**, `/etc/systemd/system/` | `python3 -m http.server 8081 --bind 100.77.132.110 --directory /dev/shm/petcam`. Tailnet only. No Go, no python packages, no model |
+| `petcam-detect.py` | **Ralph**, `~/projects/homelab/scripts/` | 5 s loop, multi-pass: fetch the still over HTTP → movement diff → YOLOv8n (2-class: pancake/willow) → shots + log + training pairs in `~/petcam` |
+| `petcam-detect.service` | **Ralph**, `/etc/systemd/system/` | `Restart=always` (Ralph has no cron — this replaces the 2-min watchdog) |
+| `petcam` (app) | **Ralph**, `~/projects/homelab/petcam/` → `petcam.service` | standalone Go binary (stdlib only, templates embedded), gallery `/`, `/live`, `/log`, `/label`, `/review`; binds **loopback** `127.0.0.1:8082` (8080 is the website app) |
+| nginx | **Ralph**, `/etc/nginx/conf.d/petcam.conf` | `petcam.andrewahale.com`: `location /hls/` → `100.77.132.110:8081/` (Tom, with `Cache-Control: no-store` added), everything else → `127.0.0.1:8082`. Ralph is the tunnel's only origin |
+| state | **Ralph**, `~/petcam/` | 129M: `shots/`, `tolabel/`, `training/`, `model/yolov8n.onnx`, `detections.log` |
+| cron | **Tom**, see [`crontab.txt`](crontab.txt) | capture `@reboot` + 2-min watchdog, health sample. No detector lines any more |
 
 ## Rebuild steps
 
-1. **Packages**: `sudo apt install ffmpeg python3-opencv python3-numpy`
-   (`rpicam-apps` ships with Raspberry Pi OS). Install Go (tarball to
-   `/usr/local/go` — the website builds with it).
-2. **cloudflared**: binary at `/usr/local/bin/cloudflared`, then
-   `cloudflared tunnel login` (writes `cert.pem`) and either reuse tunnel ID
-   `5b7e3976-7429-495d-beee-45d5213a0798` or `cloudflared tunnel create andrewahale`.
-   Copy `cloudflared-config.yaml` → `~/.cloudflared/config.yaml`.
-   **Secrets never live in this repo**: `cert.pem` and the tunnel credentials
-   JSON are recreated by `cloudflared tunnel login` / `create`.
-   DNS: `cloudflared tunnel route dns andrewahale <hostname>` for each ingress
-   hostname. Edge setup (Access on `petcam.andrewahale.com`) is in
-   `docs/website/README.md`.
-3. **Petcam app**: `git clone git@github.com:andrew-a-hale/homelab.git
-   ~/projects/homelab && cd ~/projects/homelab/petcam && make`, then
-   `cp petcam.service /etc/systemd/system/ && systemctl enable --now petcam`.
-   `BIND`/`PORT` live in the unit. No nginx on Tom: Ralph proxies to the tailnet.
-4. **Petcam scripts**: copy `scripts/petcam.sh` + `scripts/petcam-detect.py`
-   to `~/`, `chmod +x`, then `mkdir -p ~/petcam/model ~/petcam/shots`.
-5. **Model**: `~/petcam/model/yolov8n.onnx` (not in git — export it anywhere,
+### Tom — capture + static files (~10 minutes on a fresh SD card)
+
+1. **Packages**: `sudo apt install ffmpeg` (`rpicam-apps` ships with Raspberry Pi
+   OS). Nothing else — no Go toolchain, no `python3-opencv`, no numpy, no model.
+2. **Capture**: clone this repo to `~/projects/homelab`, then the capture cron
+   lines from `crontab.txt` (`petcam.sh` runs from the repo in place).
+3. **Static server**: `sudo install -m644 petcam/petcam-static.service
+   /etc/systemd/system/ && sudo systemctl enable --now petcam-static`.
+4. **Tailnet**: `tailscale up`; the unit binds `100.77.132.110` specifically, so
+   it needs `tailscaled` up (`After=tailscaled.service` is already in the unit).
+   Check: `curl -sI http://100.77.132.110:8081/frames/latest.jpg` → 200.
+
+### Ralph — detector, app, state
+
+1. **Packages**: `sudo pacman -S python-opencv python-numpy nginx go`
+   (OpenCV DNN + numpy for the detector, Go for the app). Guix is not needed.
+2. **State**: worth backing up off-box — `rsync -a tom:~/petcam/ ~/petcam/`
+   (129M: shots, tolabel, training, model, log; see the complete/ doc for why a
+   tar pipe through a third host may be needed when SSH between them is
+   restricted by the tailnet ACL).
+3. **Model**: `~/petcam/model/yolov8n.onnx` (not in git — export it anywhere,
    e.g. Colab: `yolo export model=yolov8n.pt format=onnx imgsz=640`). The
    detector auto-detects COCO-84, 1-class, or 2-class (pancake/willow) outputs.
-6. **Ralph side**: `docs/ralph/nginx-ralph.conf` → `/etc/nginx/conf.d/`, and
-   the tunnel ingress in `docs/ralph/cloudflared-config.yaml`. `nginx-site.conf`
-   here is historical (Tom used to serve `/jf/` and `/bt/`; both moved to Ralph).
-7. **Cron**: `crontab crontab.txt` (from this folder).
+4. **App**: `git clone git@github.com:andrew-a-hale/homelab.git
+   ~/projects/homelab && cd ~/projects/homelab/petcam && make`, then
+   `sudo install -m644 petcam.service /etc/systemd/system/ && sudo systemctl
+   enable --now petcam`. `BIND`/`PORT` (loopback, 8082) live in the unit.
+5. **Detector**: `sudo install -m644 petcam/petcam-detect.service
+   /etc/systemd/system/ && sudo systemctl enable --now petcam-detect`.
+6. **nginx**: `docs/ralph/nginx-ralph.conf` → `/etc/nginx/conf.d/` (it contains
+   `00-upgrade-map.conf`, `ralph.conf` and the petcam server block), plus the
+   tunnel ingress in `docs/ralph/cloudflared-config.yaml` and cloudflared itself
+   per `docs/ralph/README.md`. `nginx-site.conf` here is historical (Tom used to
+   serve `/jf/` and `/bt/`; both moved to Ralph). Petcam has no server of its own
+   on Tom: the tailnet static server is the only thing there.
 
 ## Verify
 
 ```bash
-rpicam-still --list-cameras            # one imx708 (two once the NoIR lands)
-python3 ~/projects/homelab/scripts/petcam-detect.py --selftest  # classifier + label math + empty-frame
-curl -s http://100.77.132.110:8080/shots.json   # from Ralph; no Host header needed
-curl -s http://100.77.132.110:8080/log | head
-curl -s -o /dev/null -w "%{http_code}\n" -H "Host: petcam.andrewahale.com" \
-     http://127.0.0.1/            # on Ralph: through nginx, the tunnel's origin
-ls /dev/shm/petcam/index.m3u8          # HLS stream alive
+# Tom: still + playlist served on the tailnet only
+curl -sI http://100.77.132.110:8081/frames/latest.jpg      # 200, ~100 KB
+curl -s  http://100.77.132.110:8081/index.m3u8 | head -3
+# Tom: camera pipeline alive
+ssh tom 'pgrep -af "petca[m].sh$|rpicam-vid|ffmpeg" | wc -l'   # 3
+
+# Ralph: detector + app
+python3 ~/projects/homelab/scripts/petcam-detect.py --selftest   # classifier + label math
+python3 ~/projects/homelab/scripts/petcam-detect.py --once && tail -3 ~/petcam/detections.log
+curl -s http://127.0.0.1:8082/shots.json | head -c 200
+
+# Ralph: through nginx, the tunnel's origin — 200 each, and no-store on the playlist
+for p in / /live /log /label /review /shots.json /hls/index.m3u8; do
+  printf '%-16s %s\n' "$p" "$(curl -s -o /dev/null -w '%{http_code}' \
+    -H 'Host: petcam.andrewahale.com' http://127.0.0.1$p)"
+done
 ```
 
-Then kill each process once: systemd revives the app, cron revives capture and
-`petcam-detect.py` within 2 min.
+Then kill each process once: `systemctl restart petcam` / `petcam-detect` on
+Ralph, and the capture cron on Tom revives `petcam.sh` within 2 min. Kill Tom's
+static server to check the failure mode: `/hls/` should 502 instantly and the
+gallery should still load.
 
 ## Data contract
 
@@ -153,7 +181,8 @@ tail -50 ~/petcam/logs/rpicam.log
 ## Knobs
 
 Top of `petcam.sh`: capture/stream resolution, fps, bitrates.
-Top of `petcam-detect.py`: `MIN_CONF`, `MOTION_*`, `HEARTBEAT_S`,
+Top of `petcam-detect.py`: `STILL` (Tom's still URL), `STILL_TIMEOUT_S`,
+`MIN_CONF`, `MOTION_*`, `HEARTBEAT_S`,
 `KEEP_SHOTS`, `SAVE_COOLDOWN_S`, `LOG_KEEP_DAYS`, `HARVEST_SAMPLING_RATE`.
 (No `THROTTLE_S` anymore — detections always save a snapshot.)
 `ORANGE_*`/`GRAY_MAX_SAT`/`ORANGE_FRAC` drive the hue classifier: naming comes
@@ -171,11 +200,12 @@ and base yolov8n (COCO) — which detects only ~12% of cat appearances on this
 camera — ran while data re-accumulated. See
 `complete/model-reset-base-yolo-2026-10-28.md`.
 
-Training runs on the gaming rig (Jason, RTX 3070) — never PyTorch on Tom.
-Full procedure in `skills/petcam-retrain/SKILL.md`.
+Training runs on the gaming rig (Jason, RTX 3070) — never PyTorch on Tom or
+Ralph. Full procedure in `skills/petcam-retrain/SKILL.md`.
 
-- Data: `~/petcam/training/` on Tom (YOLO pairs; class 0 = pancake, 1 = willow).
-  `~/petcam/tolabel/` holds near-miss frames queued for `/label`.
+- Data: `~/petcam/training/` on **Ralph** (YOLO pairs; class 0 = pancake,
+  1 = willow). `~/petcam/tolabel/` holds near-miss frames queued for `/label`.
+  (Moved off Tom 2026-11-08; Tom's copy is a rollback spare for a week.)
 - Trigger: after the `/label` queue is worked through and misses remain, or
   `--checknames` reports hue-classifier disagreements. ~50–200 labeled boxes is
   plenty for yolov8n on one (or a few) camera angles.
@@ -188,10 +218,10 @@ Full procedure in `skills/petcam-retrain/SKILL.md`.
   - exports ONNX, pushes to `~/petcam/model/yolov8n.onnx` (previous kept as
     `.bak`), restarts the detector.
 - Quality gate (manual): score known cat + cat-free frames vs `.bak`,
-  `ssh tom 'python3 ~/projects/homelab/scripts/petcam-detect.py --selftest'`, watch `/log` for real
+  `ssh ralph 'python3 ~/projects/homelab/scripts/petcam-detect.py --selftest'`, watch `/log` for real
   detections.
-- Roll back: `ssh tom 'cp ~/petcam/model/yolov8n.onnx.bak ~/petcam/model/yolov8n.onnx'`
-  then restart the detector (bracketed pkill pattern — see skill).
+- Roll back: `ssh ralph 'cp ~/petcam/model/yolov8n.onnx.bak ~/petcam/model/yolov8n.onnx'`
+  then `sudo systemctl restart petcam-detect` on Ralph.
 - Notes: ultralytics resolves relative `project=` against its runs root, so
   paths stay absolute. Detector auto-detects COCO-84 / 1-class / 2-class
   ONNX outputs. Venv: `~/petcam-train/.venv` (Python 3.12; system 3.14 has no
@@ -207,14 +237,15 @@ only model in the pipeline, Jev is an occasional audit tool. Full numbers,
 cost and the inverted-coat-description lesson in
 `complete/jev-corpus-flag-2026-11-08.md`. The pieces:
 
-- `scripts/petcam-detect.py --score-corpus [out.json]` (on Tom, where the ONNX
+- `scripts/petcam-detect.py --score-corpus [out.json]` (on Ralph, where the ONNX
   lives): YOLO class/conf + hue name for every corpus frame → JSON for offline
   comparison. Read-only; never writes training or tolabel data.
 - `scripts/petcam-jev.py` (anywhere with the OpenRouter key in
   `$OPENROUTER_API_KEY` or `pass dev/openrouter`): one Jev request per frame
   (noul "cat visible" + choice `pancake/willow/none` + box), writes
   `jev-scores.json` + `flags.txt`, prints a label-vs-Jev-vs-YOLO report.
-  `--from-tom` rsyncs the corpus first, `--push-flags` copies flags.txt to Tom.
+  `--from-tom` rsyncs the corpus first (from Ralph, the state host — the flag
+  kept its name), `--push-flags` copies flags.txt back.
   ~$0.00012/frame (~2,850 input tokens, output free).
 - `~/petcam/training/flags.txt` (`stem reason` per line) feeds the /review
   flagged filter; the app clears a flag when the frame is reviewed/negated/

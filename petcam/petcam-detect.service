@@ -1,0 +1,17 @@
+# /etc/systemd/system/petcam-detect.service on Ralph.
+# The detector moved off Tom on 2026-11-08: it pulls the 1fps still from Tom over
+# the tailnet and writes shots/log/training pairs into ~/petcam here. Ralph has
+# no cron, so this unit is the watchdog cron used to be (Restart=always).
+[Unit]
+Description=Pet Cam detector (YOLOv8n on the still Tom serves)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=andy
+ExecStart=/usr/bin/python3 /home/andy/projects/homelab/scripts/petcam-detect.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

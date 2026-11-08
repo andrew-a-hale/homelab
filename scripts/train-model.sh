@@ -12,7 +12,7 @@
 # for offline scoring, and never deploys — the weights stay in runs/$RUN/.
 set -euo pipefail
 
-PI=tom@tom.tailad1015.ts.net
+PI=ralph@ralph.tailad1015.ts.net  # petcam state + detector live here since 2026-11-08
 WORK="$HOME/petcam-train"
 YOLO="$WORK/.venv/bin/yolo"
 EPOCHS=${EPOCHS:-100}
@@ -115,11 +115,10 @@ if [ -n "$HOLDOUT_DAYS" ]; then
     exit 0
 fi
 
-# 5. push to the Pi (previous model kept as .bak for rollback)
+# 5. push to Ralph (previous model kept as .bak for rollback)
 scp "$WORK/runs/$RUN/weights/best.onnx" "$PI:~/petcam/model/yolov8n.onnx.new"
 ssh "$PI" 'cp ~/petcam/model/yolov8n.onnx ~/petcam/model/yolov8n.onnx.bak &&
     mv ~/petcam/model/yolov8n.onnx.new ~/petcam/model/yolov8n.onnx &&
-    pkill -f "petcam-detect[.]py$"; sleep 1
-    setsid python3 /home/tom/projects/homelab/scripts/petcam-detect[.]py >>/tmp/petcam-detect.log 2>&1 < /dev/null &'
+    sudo systemctl restart petcam-detect.service'
 echo "pushed + detector restarted. verify against known shots, else roll back:"
 echo "  ssh $PI 'cp ~/petcam/model/yolov8n.onnx.bak ~/petcam/model/yolov8n.onnx'"

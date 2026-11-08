@@ -18,24 +18,35 @@ import (
 	"time"
 )
 
-const (
-	// Detection job contract: write JPGs here as 2006-01-02_15-04-05.jpg (local time).
-	// Filename IS the timestamp; no metadata store.
-	shotsDir = "/home/tom/petcam/shots"
-	hlsDir   = "/dev/shm/petcam"
-	// Append-only detection log written by petcam-detect.py (time label file).
-	detectionsLog = "/home/tom/petcam/detections.log"
-	tolabelDir    = "/home/tom/petcam/tolabel"         // near-miss queue for the /label UI
-	trainImg      = "/home/tom/petcam/training/images" // output: YOLO pairs (jpg + txt)
-	trainLbl      = "/home/tom/petcam/training/labels"
+// Paths are under the owner's home: ~/petcam is the whole state dir, which
+// lives on Ralph since the 2026-11-08 appliance split (HOME comes from
+// systemd's User=). Only the HLS stream is still Tom's, in its tmpfs.
+var (
+	home          = homeDir()
+	shotsDir      = filepath.Join(home, "petcam/shots")
+	hlsDir        = "/dev/shm/petcam"
+	detectionsLog = filepath.Join(home, "petcam/detections.log")
+	tolabelDir    = filepath.Join(home, "petcam/tolabel")         // near-miss queue for the /label UI
+	trainImg      = filepath.Join(home, "petcam/training/images") // output: YOLO pairs (jpg + txt)
+	trainLbl      = filepath.Join(home, "petcam/training/labels")
 	// /review: stems the owner has verified by eye; anything absent still needs a look.
-	reviewedFile = "/home/tom/petcam/training/reviewed.txt"
+	reviewedFile = filepath.Join(home, "petcam/training/reviewed.txt")
 	// /review flags: stems queued for a second look (petcam-jev.py writes them;
 	// one per line, stem first, rest is the human-readable reason).
-	flagsFile = "/home/tom/petcam/training/flags.txt"
+	flagsFile = filepath.Join(home, "petcam/training/flags.txt")
 	// per-frame colour-hint stats cache (*.json never matches the training rsync)
-	reviewStatsFile = "/home/tom/petcam/training/review-stats.json"
+	reviewStatsFile = filepath.Join(home, "petcam/training/review-stats.json")
+	// the detector lives in the checkout next to this app
+	detector = filepath.Join(home, "projects/homelab/scripts/petcam-detect.py")
 )
+
+func homeDir() string {
+	h, err := os.UserHomeDir()
+	if err != nil {
+		panic("no home dir: " + err.Error())
+	}
+	return h
+}
 
 type shot struct {
 	Name string `json:"name"`
@@ -195,7 +206,7 @@ func handleLabelSave(w http.ResponseWriter, r *http.Request) {
 func handleCapture(w http.ResponseWriter, r *http.Request) {
 	// Snapshot the detector's current 1fps still into the label queue, running
 	// YOLO so a proposed box + cat name is attached when detection succeeds.
-	cmd := exec.Command("python3", "/home/tom/projects/homelab/scripts/petcam-detect.py", "--capture")
+	cmd := exec.Command("python3", detector, "--capture")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		http.Error(w, "capture failed: "+string(out), http.StatusServiceUnavailable)
 		return

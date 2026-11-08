@@ -11,6 +11,14 @@ description: >
 
 # Retraining the petcam detector
 
+> **Hosts changed 2026-11-08.** The corpus, the model and the detector live on
+> **Ralph** now (`~andy/petcam`, `petcam-detect.service`), not Tom — see
+> `docs/petcam/complete/tom-camera-appliance-2026-11-08.md`. In everything below,
+> read `tom@…`/`ssh tom` as `ralph@ralph.tailad1015.ts.net`, `/home/tom/…` as
+> `/home/andy/…`, and restart the detector with
+> `sudo systemctl restart petcam-detect.service` instead of the pkill/setsid
+> lines (Tom has no detector any more).
+
 Supervised fine-tuning with active-learning data collection. Training happens
 on this rig (RTX 3070, CUDA); the Pi only runs inference. Never put PyTorch on
 Tom.
