@@ -2,36 +2,31 @@
 
 This is a codebase for a homelab. For my homelab.
 
-The repo is `homelab` (`git@github.com:andrew-a-hale/homelab.git`, checked out
-as `~/projects/homelab`). **The machine names are unrelated**: Tom (Pi 5),
-Jason, Rose and Ralph are hosts. Only paths and repo URLs say `homelab`.
-
 It should use the following:
 - Proton VPN
 - Proton Drive
 - Proton Pass
-- Cloudflare Tunnelling
+- Cloudflare
 
-Everything should be documented, be agent friendly, and grounded with latest information by using Web Search.
+Everything should be documented, be agent friendly, and grounded with latest information.
 
 ## Security Posture
 
 - Nothing listens on the WAN. Ingress is one outbound Cloudflare tunnel on Ralph, and origin services bind loopback.
-- Firewalls allow per service, never per subnet, and both hosts have ufw on.
-- Human credentials live in Proton Pass (machine/boot secrets in `pass` or on disk, never in this repo — it is public).
-- Tailnet SSH authenticates by identity, not keys: see docs/security/todo/
-  lan-trust-2026-11-08.md before adding a node.
+- Firewalls allow per service and both hosts have ufw on.
+- Human credentials live in Proton Pass.
+- Tailnet SSH authenticates by identity.
 
 ## Where things run
 
-Tom (Raspberry Pi 5) now runs only the Petcam camera: it serves the 1 fps stream and stills on the tailnet (`:8081`), and Ralph pulls and proxies them.
+**Tom** (Raspberry Pi 5) now runs only the Petcam camera: it serves the 1 fps stream and stills on the tailnet (`:8081`), and Ralph pulls and proxies them.
 no detector, no web app, no nginx.
 
-Jason (Desktop) does YOLO model fine tuning for the Petcam.
+**Jason** (Desktop) does YOLO model fine tuning for the Petcam.
 
-Rose (Laptop) uses jellyfin with TV in place of the Google Streamer TV solution temporarily.
+**Rose** (Laptop) uses jellyfin with TV in place of the Google Streamer TV solution temporarily.
 
-Ralph (Dell OptiPlex 7070 Micro, Arch) is the always-on server and the public gateway: Jellyfin, qBittorrent, DHT Sensor, fail2ban, the media library, the website, and the only Cloudflare tunnel.
+**Ralph** (Dell OptiPlex 7070 Micro, Arch) is the always-on server and the public gateway: Jellyfin, qBittorrent, DHT Sensor, fail2ban, the media library, the website, and the only Cloudflare tunnel.
 
 ## Detailed Todos and Tickets
 
