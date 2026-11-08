@@ -32,12 +32,15 @@ seconds, not minutes. Overridable with env vars: `TOM_HOST`, `RALPH_HOST`,
 | Check | Host | Means |
 |---|---|---|
 | `boot` | tom, ralph | uptime and boot time. Informational — the boot count is the signal |
-| `service:petcam` | tom | `systemctl is-active petcam` — the Go gallery/live/label app |
-| `capture` | tom | `rpicam-vid`, `ffmpeg` and `petcam-detect[.]py` all alive. Any one down = no stream and/or no detections |
+| `service:petcam-static` | tom | `systemctl is-active petcam-static` — the tailnet-only file server for `/dev/shm/petcam`. The gallery/live app itself is on ralph |
+| `capture` | tom | `rpicam-vid`, `ffmpeg` and the `8081` static server all alive. Any one down = no stream and/or no stills for the detector |
 | `power` | tom | `vcgencmd get_throttled` must be `0x0` (any other value latches until a power cycle) plus SoC temp, shown for context only |
 | `shots` | tom | age of the newest file in `~/petcam/shots`; detector saves ~134/day, so >24h means the detector is wedged (WARN) |
 | `frames` | tom | age of the newest file in `/dev/shm/petcam/frames`; capture is 1 fps, so >10 min means the pipeline is dead even if the processes linger |
 | `boots/24h` | tom | boots started in the last 24h, counted from `journalctl --list-boots -o json` (the `--since` flag is ignored by `--list-boots`, hence the JSON). >3 is the reboot bug flaring |
+| `auth/24h` | tom, ralph | failed SSH logins in the last 24h (`Failed password|Invalid user`). >20 is a WARN: the internet is trying, or something on the LAN is |
+| `bt-401` | ralph | 401s in `/var/log/nginx/access.log` (basic-auth failures on `/bt/`), whole log lifetime. Same threshold |
+| `fail2ban` | ralph | banned IPs right now, from `fail2ban-client status` (jails: `sshd`, `nginx-http-auth`, `jellyfin`). Informational |
 | `service:{nginx,cloudflared,jellyfin,qbittorrent-nox@qbittorrent}` | ralph | the public entry point and the apps behind it |
 | `proton0` | ralph | WireGuard link for qBittorrent leak protection; qBit is bound to it, so no `proton0` = no torrents |
 | `disk:/`, `disk:/srv/media` | ralph | percent free; `/srv` is the root fs here, the 3.6T library is `/srv/media` and is reported separately (the probe dedupes by mountpoint) |
@@ -69,11 +72,11 @@ grep -v 'tom=ok' ~/homelab-health.log      # every run Tom was unhealthy
    physical (camera ribbon reseat / PSU). Do not "fix" it by disabling the
    hardware watchdog — that turns a reboot into a hang.
 2. **`frames` WARN or `capture` FAIL** — the petcam stream is dead. Follow
-   `docs/petcam/README.md` §Verify: `curl -s http://100.77.132.110:8080/shots.json`,
-   `ls /dev/shm/petcam/index.m3u8`, `tail -50 ~/petcam/logs/rpicam.log`. Cron
-   relaunches `petcam.sh` and `petcam-detect.py` within 2 min, so a persistent
-   FAIL means it is dying on start, not missing. Restart with the bracketed
-   pattern (`pkill -f "petcam-detect[.]py"`) — an unbracketed pattern
+   `docs/petcam/README.md` §Verify: `ssh ralph 'curl -s http://127.0.0.1:8082/shots.json'`,
+   `ssh tom 'ls /dev/shm/petcam/index.m3u8'`, `ssh tom 'tail -50 ~/petcam/logs/rpicam.log'`.
+   Cron relaunches `petcam.sh` and systemd restarts `petcam-detect` on ralph, so a
+   persistent FAIL means it is dying on start, not missing. Restart with the
+   bracketed pattern (`pkill -f "petcam-detect[.]py"`) — an unbracketed pattern
    self-matches the command that runs it.
 3. **`http:*` FAIL or intermittent 502** — the public path is
    Cloudflare → `cloudflared` → nginx on Ralph (:80) → app. Check in that order:

@@ -1,0 +1,37 @@
+// Tailnet policy — paste this object at
+// https://login.tailscale.com/admin/acls/file and Save (2026-11-08).
+//
+// `dst` must be an ADDRESS, not a bare machine name: `"ralph:22,…"` is rejected
+// with `invalid address`. So hosts are spelled out by tailnet IP below. If a
+// node is ever removed and re-added (new IP), fix it here.
+//   ralph 100.108.202.106   tom 100.77.132.110   jason 100.95.54.82
+//   iphone-11 100.75.233.78  rose 100.90.227.7
+//
+// Design notes:
+//   * Deliberately NO `ssh` block. Tailscale SSH authenticates by tailnet
+//     identity and never touches sshd — on Tom that was measurable as
+//     `Authenticated to … using "none"`, while the same box over the LAN demands
+//     a key. It is now off on both hosts (`tailscale set --ssh=false`), so
+//     tailnet SSH is sshd + keys. Leaving the block out means it cannot come
+//     back by accident. Do NOT "improve" this to `action: "check"`: it needs a
+//     browser re-auth every 12 h and silently breaks the 08:00 health check.
+//   * No tags yet: tagging a node forces a re-auth, and a re-authed node is
+//     unreachable until someone opens the login URL. Ralph is headless (LUKS +
+//     TPM), so tag it later with a pre-created auth key when nobody is depending
+//     on remote access.
+//   * `src` cannot be a hostname (only tags/groups/autogroups/users), hence
+//     `autogroup:member` for everything the owner's devices do.
+//   * Ports are what each box actually serves. Tom has no web server: :8081 is
+//     the tailnet-only file server Ralph pulls the petcam stream and still from.
+{
+  "acls": [
+    // Ralph: sshd, the public web entry point (nginx), Jellyfin
+    { "action": "accept", "src": ["autogroup:member"], "dst": ["100.108.202.106:22,80,8096"] },
+
+    // Tom: sshd, and the petcam tmpfs file server. Nothing else exists there.
+    { "action": "accept", "src": ["autogroup:member"], "dst": ["100.77.132.110:22,8081"] },
+
+    // Remote LAN access over the subnet router (Tom today)
+    { "action": "accept", "src": ["autogroup:member"], "dst": ["192.168.1.0/24:*"] }
+  ]
+}

@@ -1,48 +1,75 @@
-# Office Temp & Humidity (DHT12)
+# Office temp & humidity (DHT12)
 
-Wemos D1 Mini + DHT12 (I2C) on the Pi's `/dev/ttyUSB0` (CH340). Firmware on
-the D1 mini polls the sensor 10×/s and prints `23.3 C  62.1 %` lines over
-serial. `dht_daemon` (C) reads them and atomically writes
-`~/projects/andrewahale.com/web/static/dht.json`, served by the website.
+An ESP8266 (Wemos D1 mini) + DHT12 on a USB-serial adapter, read by **Ralph**,
+published at `https://andrewahale.com/static/dht.json`. Verified 2026-11-08:
+`/dev/ttyUSB0` present, `/srv/dht/dht.json` updated seconds ago, live over HTTPS.
 
-## Source
+## Shape
 
-All code lives in this repo: `scripts/dht/`
-- `dht_firmware/dht_firmware.ino` — D1 mini sketch (I2C read, checksum, print)
-- `dht_daemon.c` — serial → JSON file daemon (systemd service `dht-daemon`)
-- `read_dht_serial.c` — one-off reader, also used to debug/hard-reset
-- `Makefile`, `dht-daemon.service`
+```
+D1 mini (DHT12, I2C) ──micro-USB/CH340──▶ Ralph /dev/ttyUSB0
+   firmware prints "25.0 C  24.9 %" 10×/s
+        ▼
+/usr/local/bin/dht-writer  ──▶  /srv/dht/dht.json   (atomic mv)
+        ▲ dht.service (Restart=always, After=dev-ttyUSB0.device)
+        ▼
+nginx  location = /static/dht.json  →  alias /srv/dht/dht.json
+```
 
-Deployed on the Pi at `~/projects/dht/` (binaries + `arduino-cli` live there,
-not in this repo).
+The writer is [`scripts/dht-writer.sh`](../../scripts/dht-writer.sh) — 20 lines
+of shell: `stty` the port, `read` lines, `printf` JSON to a temp file, `mv` it
+into place so nginx never serves half a document.
+
+## Install (Ralph)
+
+```bash
+sudo install -m755 scripts/dht-writer.sh /usr/local/bin/dht-writer
+```
+
+`/etc/systemd/system/dht.service`:
+
+```ini
+[Unit]
+Description=USB DHT sensor -> /srv/dht/dht.json
+After=dev-ttyUSB0.device
+Requires=dev-ttyUSB0.device
+
+[Service]
+ExecStart=/usr/local/bin/dht-writer
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`sudo systemctl enable --now dht`. The nginx alias is already in
+`../ralph/nginx-ralph.conf`.
 
 ## Wiring
 
 - DHT12 SDA → D1 mini D2 (GPIO4), SCL → D1 (GPIO5), 3V3 + GND
-- D1 mini → Pi via micro-USB
+- D1 mini → USB-serial adapter (CH340) → Ralph
 
-## Rebuild from scratch
+The firmware sketch lives in `scripts/dht/dht_firmware/` and is only needed to
+reflash the board (`arduino-cli`); `scripts/dht/` also holds the older C
+serial→JSON daemon, which the shell writer replaced.
 
-```sh
-ssh tom
-cd ~/projects/dht
-make flash          # only if D1 mini needs reflashing (needs arduino-cli)
-make install        # build daemon, install systemd unit, start service
+## Verify
+
+```bash
+ssh ralph 'systemctl is-active dht; cat /srv/dht/dht.json'
+curl -s https://andrewahale.com/static/dht.json
 ```
 
-`dht-daemon` is enabled at boot, `Restart=always`. It hard-resets the D1 mini
-(DTR/RTS pulse) on every start, and exits after 3 min with no valid reading,
-so systemd restarts it and pulses again — recovers the known failure mode
-where the ESP8266 hangs in `Wire` (I2C has no timeout) and goes silent.
-<!-- ponytail: firmware hang handled by reset-on-stall in the daemon; a proper
-     watchdog (firmware WDT + Wire timeout) if hangs become frequent -->
+Fresh `date` field = healthy. A stale timestamp means the board is silent or
+`/dev/ttyUSB0` renumbered (check `ls -l /dev/ttyUSB*`, then `systemctl restart dht`).
 
-## Health check
+## Ceiling
 
-```sh
-ssh tom 'systemctl is-active dht-daemon; cat ~/projects/andrewahale.com/web/static/dht.json'
-# or watch the raw serial stream (also hard-resets the board):
-ssh tom 'cd ~/projects/dht && make read'
-```
+**Not calibrated.** Ralph's sensor reads ~2.8 °C cooler than the retired Pi
+sensor that sat in the same room, and neither was ever checked against a
+reference. No offset is applied on purpose (`RUNBOOK.md`): the number is the
+sensor's, not a guess.
 
-Fresh JSON = healthy. Stale timestamp on the file or `inactive` = daemon down.
+History: `complete/dht-restart-2026-10-22.md` (the daemon-died incident).

@@ -1,5 +1,13 @@
 # Tailnet auth on headless boxes: disable key expiry, accept SSH (2026-11-07)
 
+> **Correction 2026-11-08 (resolved):** this decision had *not* been applied when
+> it was first checked — `KeyExpiry` was still set on every node (ralph
+> `2027-05-06`, tom `2027-01-14`). It was applied later the same day
+> (`KeyExpiry: None` for both, verified). The ACL half aged differently: the `ssh`
+> rule was removed altogether and Tailscale SSH turned off — see
+> `docs/security/complete/tailnet-key-only-and-narrow-policy-2026-11-08.md`.
+
+
 **Decision:** both always-on, headless machines (`tom`, `ralph`) get **node key
 expiry disabled** and are reached over **Tailscale SSH without a check prompt**.
 Laptops/phones keep default expiry and their check.

@@ -1,130 +1,92 @@
 # VPN
 
-// TODO: Roll the Design into this README
+Three separate jobs, three tools — no shared switch. The homelab does not route
+everything through a VPN; it uses each where it earns its place.
 
-Redesigned 2026-10-22/23 (plan: `design.md`, decision: `complete/proton-cli-tailscale-redesign-2026-10-23.md`).
-Three orthogonal jobs, three tools — no shared switch:
-
-| Job | Tool |
-|---|---|
-| Traffic privacy (opt-in, per device) | **Proton VPN CLI** (official `proton-vpn-cli`) |
-| Torrent safety (tom) | qBittorrent **interface-bound to `proton0`** |
-| Remote access | **Tailscale** (LAN) + **Cloudflare tunnel** (public HTTP) |
-
-## `vpn` — Proton mode switcher (runs on jason, symlinked from `~/.local/bin`)
-
-| Command | Does | Meaning |
+| Job | Tool | Where |
 |---|---|---|
-| `vpn off` | `protonvpn disconnect` | bare ISP |
-| `vpn any` | `protonvpn connect` | Proton, fastest exit anywhere |
-| `vpn safe` | `protonvpn connect --country Switzerland --p2p` | Proton, Switzerland exit (P2P-friendly, for torrents) |
-| `vpn status` | `protonvpn status` + public IP | check before anything sensitive |
+| Traffic privacy, opt-in per device | **Proton VPN CLI** (`protonvpn`) | Jason (desktop), by hand |
+| Torrent safety | qBittorrent **interface-bound to `proton0`** | Ralph only |
+| Remote access | **Tailscale** (LAN + SSH) and **Cloudflare tunnel** (public HTTP) | all hosts |
 
-- The `any` guard does a real fetch end-to-end and exits 1 with a fix hint
-  (route checks alone can pass while traffic/DNS is dead —
-  `complete/away-dns-blackhole-2026-10-22.md`).
-- `vpn-soak [minutes-per-mode] [modes...]` — cycles modes and probes every 5s
-  with state snapshots, for diagnosing intermittent dropouts. Output:
-  `~/vpn-soak-<ts>.log`.
-- Phones/tablets: the Proton app is the whole story. Remote LAN access is
-  Tailscale's toggle — never mixed into `vpn`.
+## Proton VPN
 
-## tom (the Pi)
+**Jason** — `vpn` is `scripts/vpn`, symlinked into `~/.local/bin`:
 
-> **Superseded 2026-11-08:** the VPN on this box is retired along with
-> qBittorrent — both moved to Ralph (WireGuard `wg-quick@proton0`, uid-scoped
-> split tunnel). See `docs/ralph/complete/qbittorrent-vpn-2026-11-07.md`. Tom
-> runs petcam only.
+| Command | Does |
+|---|---|
+| `vpn off` | disconnect, bare ISP |
+| `vpn any` | connect, fastest exit |
+| `vpn safe` | connect `--country Switzerland --p2p` |
+| `vpn status` | `protonvpn status` + public IP |
 
-- `proton-vpn-cli` 1.0.5 + `proton-vpn-daemon` 0.13.8 from Proton's Debian repo
-  (arm64 works). Connected with `protonvpn connect --country Switzerland --p2p`; a 5-min cron
-  watchdog keeps `proton0` up (see `crontab -l`). **Cron needs
-  `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus`** — the CLI talks to
-  the user session bus.
-- **qBittorrent (`qbittorrent-nox@tom`) binds to `proton0`**
-  (`Session\Interface`/`Session\InterfaceName` in
-  `~/.config/qBittorrent/qBittorrent.conf`). That is the *entire* VPN
-  enforcement: when the tunnel is down, torrent sockets have nowhere to go.
-  **Verified 2026-10-23**: with `protonvpn disconnect`, qBittorrent holds zero
-  external sockets while everything else keeps working on the bare ISP.
-- Everything else on tom (website, petcam, jellyfin, cloudflared) rides the
-  VPN when it's up and the bare ISP when it's not — both work, the Cloudflare
-  tunnel is outbound-only. Verified 200/302 on all three hostnames in the
-  VPN-up state.
-- Kill switch **off** (default). Its dummy interface is what broke DNS on
-  jason, and interface binding already covers the leak that matters.
-- Sign-in is a one-time thing: `ssh tom protonvpn signin <username> --totp`.
-  The session survives reboots (verified on jason). Re-auth only after a
-  Proton password change, keyring wipe, or Proton-side revocation — symptom is
-  `Authentication required` from `vpn any`/`protonvpn connect`.
+`vpn any` verifies end-to-end and exits non-zero with a fix hint (route checks can
+pass while DNS/traffic is dead). `vpn-soak [minutes] [modes…]` cycles modes and
+probes every 5 s, logging to `~/vpn-soak-<ts>.log`. Phones/tablets: the Proton
+app is the whole story.
 
-### Debian packaging gaps (worked around 2026-10-23)
+**Ralph** — `wg-quick@proton0` with `/etc/wireguard/proton0.conf` (secret, not in
+this repo), plus `proton-guard.timer` every 5 min running `scripts/proton-guard.sh`
+(installed at `/usr/local/bin/`), which re-raises the interface if it drops. The
+guard, not the unit, is what keeps the tunnel up in practice.
 
-Proton's Debian build is missing pieces their Arch build doesn't need:
+The tunnel is **inverted routing**: `Table=off` plus one uid rule, so only
+qBittorrent's uid uses it. Nothing else on Ralph knows the VPN exists.
 
-1. **`nm-protun.service` is missing** — `nm-protun.name` declares
-   `SystemdService=nm-protun.service` but no unit ships, so NetworkManager can
-   never spawn the WireGuard plugin. Symptom: `protonvpn connect` prints
-   `Connection failed` while leaving a half-up tunnel (interface up, packets
-   flowing, `status` says Disconnected). Fix: the unit in
-   `files/nm-protun.service` → `/usr/lib/systemd/system/nm-protun.service`.
-2. **polkit denies ssh/cron sessions** — they're "inactive", so
-   `connection-add` fails (`audit: ... reason="Insufficient privileges"`),
-   and `protonvpn connect` says `An unexpected error occurred`. Fix:
-   `files/50-vpn-tom-nm.rules` → `/etc/polkit-1/rules.d/`.
-3. **Harmless noise**: `Keyring ... SecretService ... KeyringLocked`
-   tracebacks in proton logs on headless — credentials fall back to the SSO
-   store (`~/.config/Proton/`). No gnome-keyring needed.
+**Kill switch stays off.** Its dummy interface is what broke DNS on Jason
+(`complete/away-dns-blackhole-2026-10-22.md`), and interface binding already
+covers the leak that matters: qBittorrent's sockets have nowhere to go when
+`proton0` is down.
 
-### Manual install (fresh Pi)
+One-time sign-in per host: `protonvpn signin <user> --totp`. The session survives
+reboots; you only re-auth after a Proton password change, keyring wipe or
+Proton-side revocation — the symptom is `Authentication required` from
+`vpn any`/`protonvpn connect`.
 
-1. Proton repo: install `protonvpn-stable-release` .deb from
-   `https://repo.protonvpn.com/debian/dists/stable/main/binary-all/`, then
-   `apt install proton-vpn-cli proton-vpn-daemon`.
-2. Drop in the two files above + `systemctl daemon-reload`.
-3. `protonvpn signin <username> --totp`, then `protonvpn connect --country Switzerland --p2p`.
-4. Bind qBittorrent to `proton0`; put the watchdog line in crontab (with the
-   DBUS env var).
+## Tailscale
 
-## Tailscale — remote access to the LAN
+- **No Tailscale SSH anywhere.** `RunSSH: false` on both hosts, so tailnet SSH is
+  plain sshd with keys (`ssh -vv tom` → `using "publickey"`). This is deliberate:
+  Tailscale SSH authenticates by tailnet identity and bypasses sshd entirely, so
+  with it on, Tom's sshd hardening covered nothing on the tailnet path.
+- **Policy** is `docs/vpn/tailnet-acl.hujson` — narrow by host and port
+  (`ralph:22,80,8096`, `tom:22,8081`, the LAN route), no `ssh` block. Tags are
+  deliberately absent: tagging forces a re-auth and the node is unreachable until
+  someone opens the login URL. Do that later with a pre-created auth key, never
+  with `action: "check"` (a 12-hourly re-auth breaks the 08:00 health check).
+- **Node key expiry is disabled on the headless boxes only** (`ralph`, `tom`) —
+  no console, no browser, so an expiring key would mean a dead gateway. Verified
+  2026-11-08: `KeyExpiry: None` for both. `jason`, `rose` and `iphone-11` keep the
+  default expiry (they have browsers).
+- `tom` advertises `192.168.1.0/24` (approved in the admin console) so the phone
+  can reach the LAN from anywhere. Moving the route to Ralph would need an
+  approval click; leaving it on Tom is fine now that Tom is key-only.
+- Clients: `iphone-11` (remote LAN access), `jason` and `rose` on the LAN. One
+  toggle per device; NAT traversal, never port-forwarding.
 
-- **Auth clocks, headless boxes:** `tom` and `ralph` have node key expiry
-  **disabled** and are reached over Tailscale SSH with `action: "accept"` (no
-  12-hourly check prompt). Defaults would have been 180 days and 12h, both of
-  which need a console or a browser click on machines that have neither.
-  Laptops/phones keep their expiry. See
-  `complete/tailnet-key-expiry-2026-11-07.md`.
-- tom advertises `192.168.1.0/24` only (exit-node routes dropped 2026-10-24).
-  **Route approved in the Tailscale admin console** (machine `tom` → Edit route
-  settings). Home-exit routing remains an upgrade path (`--advertise-exit-node`).
-- Clients: `iphone-11` is in the tailnet (remote LAN access from the phone).
-  `jason` was removed 2026-10-24 (always on the same LAN, no remote access
-  needed); add the laptop the same way if wanted. One toggle per device, works
-  from anywhere (NAT traversal — never port-forward).
+## Public HTTP
 
-## Deleted 2026-10-23 (the old machinery)
+One Cloudflare tunnel, on Ralph, outbound-only — no WAN inbound anywhere in the
+house. Ingress shape: `../ralph/cloudflared-config.yaml`. Public hostnames and
+their auth: `../website/README.md`.
 
-- `wg-quick@protonvpn` + all of `/etc/wireguard` on tom — hand-minted configs
-  with ~weekly expiry and the `vpn-sync-pi` refresh ritual.
-- `wg-quick@wg-lan` + `wg-pi` client confs — the old "home mode" full tunnel.
-- `dnsmasq` + `adblock-update.timer` + `vpn-adblock` + the `vpn adblock`
-  subcommand (adblock was never a requirement; dnsmasq was already dead).
-- Stale `wg0.conf` (referenced `eth0`) and jason's 5 wireguard confs
-  (`protonvpn{,-au,-us}`, `wg-pi`, `wg0-vps`).
+## Verify
 
-## Cleanup (completed 2026-10-24)
+```bash
+~/.local/bin/vpn status                       # jason: connected + exit IP
+ssh ralph 'sudo wg show proton0 | head -4'    # handshake age
+ssh ralph 'systemctl is-active wg-quick@proton0 proton-guard.timer'
+tailscale status                              # peers, and who is expired
+```
 
-- Router: removed the UDP/51820 port-forward (old wg-lan remote access).
-- Cloudflare DNS: deleted the stale `vpn.andrewahale.com` record (202.59.30.216).
-- Tailscale admin: approved tom's `192.168.1.0/24` route; also dropped tom's
-  exit-node advertisement (`0.0.0.0/0`, `::/0`) so it no longer requests
-  exit-node use. Exit-node routing remains an upgrade path only.
+## Ceilings
 
-## Bugs found & fixed
+- **No VPN on the public path.** The website, Jellyfin and the tunnel ride the
+  bare ISP; the Cloudflare tunnel is outbound TLS and does not need a VPN.
+- Ralph's Proton endpoint is a single AU peer; a Proton-side outage is a
+  qBittorrent outage, not a Ralph outage (nothing else uses the interface).
 
-1. `vpn home` failed open silently when the Pi's Proton cert expired (2026-10-21) — fixed with a handshake guard, then designed away.
-2. `vpn-sync-pi` detected the wrong interface (2026-10-21) — fixed, then deleted.
-3. Pi-side `wg syncconf` reload broke through ssh+sudo (2026-10-21) — fixed, then deleted.
-4. `vpn away` silently blackholed DNS via the Proton kill-switch dummy (2026-10-22) — `complete/away-dns-blackhole-2026-10-22.md`; the `vpn any` guard still checks for it.
-5. Missing `nm-protun.service` unit in Proton's Debian package (2026-10-23) — worked around above.
-6. polkit "Insufficient privileges" for ssh/cron NM connections (2026-10-23) — worked around above.
+History: `complete/` — the Proton CLI + Tailscale redesign (and everything it
+deleted), Switzerland exit, the route approval, the kill-switch DNS blackhole, and
+the headless key-expiry decision. Tom's Proton stack is gone with the migration
+(`../ralph/complete/qbittorrent-vpn-2026-11-07.md`).

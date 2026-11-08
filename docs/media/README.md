@@ -1,63 +1,72 @@
-# Media Server
+# Media server
 
-Serve media from the homelab to the TV. **Working end-to-end since 2026-10-21.**
+Jellyfin + qBittorrent on **Ralph**, the always-on server. Verified
+2026-11-08: library on the 3.6T USB drive, Jellyfin 12.4 serving, qBittorrent
+5.3.0 downloading through the Proton tunnel.
 
-## As built (migrated to the Pi 2026-10-21)
+## What runs where
 
-| Piece | What | Status |
+| Piece | Where | Notes |
 |---|---|---|
-| Server | Jellyfin 12.2 on Pi `tom` (Raspberry Pi 5, 8GB), Debian package from repo.jellyfin.org, systemd unit `jellyfin` (enabled at boot) | Running |
-| Library | `/mnt/storage/media/{movies,tv,music}` — **NFS from jason** (temporary, 2026-10-22): the Pi's WD Elements 1TB died ("Unit Not Ready" at boot) and its contents were abandoned; the Pi now NFSv4-mounts jason's internal 1.8T disk at the same `/mnt/storage` path (fstab `192.168.1.181:/mnt/storage /mnt/storage nfs vers=4,nolock,nofail,_netdev 0 0`; do NOT add `x-systemd.automount`/`x-systemd.idle-timeout` — an idle timeout unmounts the share after 10 min and makes Jellyfin drop the library; jason UFW allows 2049/tcp from the Pi; `/etc/exports` on jason). Mount the 2TB SSD at `/mnt/storage` the same way (same path = zero config changes) and drop the fstab NFS line. Holds: Mulholland Drive + Twin Peaks S01 (downloading) | Live |
-| Access (LAN) | **`http://tom/jf`** (nginx reverse proxy on the Pi, subpath mode via Jellyfin `BaseUrl=/jf`; `tom` = mDNS from avahi) | Working |
-| qBittorrent WebUI | **`http://ralph/bt/`** — basic auth: `andy` / `pancake`. Direct API stays loopback-only on Ralph for the `grab` scripts. Tom's copy is retired (no binary, no unit, no nginx) | Working |
-| TV client | **Laptop + HDMI, Jellyfin web app** — pending Google TV Streamer (TODO) | Working |
-| Remote access | Not set up — add `jellyfin.andrewahale.com` to the existing Cloudflare tunnel when wanted (docs/server step 9) | Skipped |
-| Desktop `jason` | Jellyfin + qBittorrent **stopped and disabled** 2026-10-21 — the desktop is out of the media business | Off |
+| Jellyfin 12.4 | **Ralph**, `jellyfin.service` (Arch, `pacman -Q jellyfin-server`) | `BaseUrl=/jf`, binds `0.0.0.0:8096`, UI `http://ralph/jf` |
+| Library | **Ralph**, `/dev/sda1` → `/srv/media` | ext4, label `media`, 3.6T (61.8G used). `movies/`, `tv/`, `music/` (music is **not** a Jellyfin library) |
+| Library path in Jellyfin | `/mnt/storage/media/...` | `/mnt/storage/media` is a **symlink to `/srv/media`** — keep it, Jellyfin's config references that path |
+| Drive mount | `/etc/fstab`, `nofail,x-systemd.device-timeout=15` | plus `jellyfin.service.d/` with `RequiresMountsFor=/srv/media`, so an unplugged drive stops Jellyfin instead of serving empty libraries |
+| qBittorrent 5.3.0 | **Ralph**, `qbittorrent-nox@qbittorrent` | WebUI `127.0.0.1:8081`, `Session\Interface=proton0` |
+| Download path | `/srv/media/movies`, `/srv/media/tv` | Jellyfin scans on start and ~30 min |
 
-Jellyfin's server name is `tom` (renamed in the wizard — yes, same as the Pi's
-hostname). Config/user/libraries carried over from the desktop with zero edits:
-the drive is mounted at the same `/mnt/storage` path the desktop used.
+## Access
+
+| From | URL | Auth |
+|---|---|---|
+| LAN | `http://ralph/jf` | Jellyfin login |
+| Internet | `https://jellyfin.andrewahale.com` | Jellyfin login (no Cloudflare Access — see `../security/complete/public-ingress-2026-11-08.md`) |
+| LAN (qBittorrent) | `http://ralph/bt/` | nginx basic auth; the password is in **Proton Pass** (human credentials do not live in this repo or in `pass`). fail2ban bans a LAN client after 5 bad attempts (it cannot ban internet clients: `/bt/` is not tunnelled, so this is fine) |
+
+The tunnel ingress points `jellyfin.andrewahale.com` **straight at
+`127.0.0.1:8096`**, not through nginx, because `BaseUrl=/jf` already carries the
+prefix (`../ralph/cloudflared-config.yaml`).
 
 ## Downloads
 
-qBittorrent 5.1 on **Ralph** (system service `qbittorrent-nox@qbittorrent`,
-WebUI `127.0.0.1:8081` **on Ralph**, localhost auth bypassed) — **bound to
-Ralph's `proton0` WireGuard interface** (IP `10.2.0.2`): downloads only flow
-while Ralph's Proton tunnel is up; tunnel down = no traffic, never leaks. Note
-the interface was renamed from `protonvpn` to `proton0` by the Proton
-CLI/WireGuard setup — if qBittorrent ever logs "configured network interface is
-invalid", re-point `Session\Interface`/`Session\InterfaceName`/
-`Session\InterfaceAddress` in `/var/lib/qbittorrent/.config/qBittorrent/qBittorrent.conf`
-to `proton0`/`10.2.0.2`. Full setup: `../ralph/complete/qbittorrent-vpn-2026-11-07.md`.
+qBittorrent is **bound to `proton0`** (Proton WireGuard, `10.2.0.2`): downloads
+only flow while the tunnel is up. Tunnel down = no traffic, never a leak
+(`../ralph/complete/qbittorrent-vpn-2026-11-07.md`). The VPN exists for this one
+app — `Table=off` and a single uid rule, so nothing else on Ralph rides it.
 
-Tom no longer runs qBittorrent at all (binary, unit and nginx removed).
+If qBittorrent logs "configured network interface is invalid", re-point
+`Session\Interface`, `Session\InterfaceName` and `Session\InterfaceAddress` in
+`/var/lib/qbittorrent/.config/qBittorrent/qBittorrent.conf` at `proton0` /
+`10.2.0.2`.
 
-## How to use it
+## TV
 
-1. Downloads land in `/mnt/storage/media/movies` (or `tv/`) automatically
-2. Jellyfin scans on start / every ~30min (or Dashboard → Libraries → Scan All
-   Libraries if impatient)
-3. TV: laptop → HDMI → browser → `http://tom/jf` → play
+Laptop → HDMI → browser → `http://ralph/jf` → play, until a Google TV Streamer
+or Shield arrives (`TODO.md`). The TV's own DLNA path is a dead end — see
+[`complete/dlna-rejected-2026-11-08.md`](complete/dlna-rejected-2026-11-08.md).
 
-## What we tried on the TV and rejected
+## Verify
 
-Hisense 65AU6K runs **VIDAA OS** — no Jellyfin/Play app in its store. Its native
-Media app speaks DLNA; Jellyfin's DLNA plugin (14.0.0.0, plugin not built-in on
-12.x — install via Dashboard → Plugins, **then restart jellyfin**) discovered the
-TV fine, but the TV refuses files under the fallback "Generic Device" profile
-("No matching device profile found" — no VIDAA profile exists). File itself was
-vanilla H.264/AAC, i.e. not a codec problem. VIDAA+DLNA = time sink, abandoned.
+```bash
+ssh ralph 'systemctl is-active jellyfin qbittorrent-nox@qbittorrent fail2ban'
+ssh ralph 'findmnt -T /srv/media -o SOURCE,FSTYPE,SIZE,USED,AVAIL'   # /dev/sda1 ext4
+curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: jellyfin.andrewahale.com' http://127.0.0.1:8096/jf/web/
+curl -sI https://jellyfin.andrewahale.com/ | head -1                # 302 -> /jf/web/
+ssh ralph 'sudo journalctl -u qbittorrent-nox@qbittorrent -n 20 | grep -i interface'
+```
 
-## Upgrade Steps
+## Ceilings
 
-1. Google TV Streamer or Nvidia Shield.
-2. **Cloudflare Tunnel** to expose Jellyfin away from home — reuses existing
-   website stack.
+- **One old drive, no redundancy** (3.6T USB), and nothing on it is backed up —
+  `RUNBOOK.md` is explicit: the media is the one thing with no second copy.
+  Re-rippable, not restorable.
+- **No transcoding budget** — i5-9500T handles it, but every stream and every
+  public request crosses Ralph's single wifi link (`../ralph/README.md`).
+- **New Jellyfin plugins need `sudo systemctl restart jellyfin`** — the web UI's
+  install button doesn't restart the server.
+- **Manual patching.** Arch, no update timer (`../security/todo/`). Jellyfin
+  12.4 is current as of 2026-11-08, and it is the box's only internet-facing
+  authenticated app.
 
-## Notes / ceilings
-
-- 2TB drive is a single old WD Green, no redundancy — fine for re-downloadable
-  media; irreplaceable files (Photos backup on same disk) need a separate backup
-  plan.
-- New Jellyfin plugins need `sudo systemctl restart jellyfin` to load — the web
-  UI's install button doesn't restart the server.
+History: `../ralph/complete/media-and-jellyfin-2026-11-07.md` (move off Tom),
+`complete/` here for the NFS era and the VPN/interface incidents.

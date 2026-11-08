@@ -33,12 +33,17 @@ set -uo pipefail
 #   HTTP_TIMEOUT=10    Cloudflare edge answers fast when healthy; 10s is a
 #                      generous ceiling for a cold tunnel hop.
 #   LOG_KEEP_DAYS=90   ~quarter of daily lines, small enough to read by hand.
+#   AUTH_WARN_MAX=20   failed SSH logins (and nginx 401s on /bt/) per host per
+#                      24h. Ralph's sshd is key-only and LAN 22 is firewalled, so
+#                      a burst means something is trying; a handful is internet
+#                      background noise. WARN: it is a trend, not an outage.
 BOOT_WARN_MAX=3
 SHOT_STALE_H=24
 FRAME_STALE_S=600
 DISK_MIN_PCT=10
 HTTP_TIMEOUT=10
 LOG_KEEP_DAYS=90
+AUTH_WARN_MAX=20
 
 TOM_HOST=${TOM_HOST:-tom}
 RALPH_HOST=${RALPH_HOST:-ralph}
@@ -108,6 +113,10 @@ boots_class() { # boots in the last 24h
   [ "$1" -lt 0 ] && { echo WARN; return; }
   [ "$1" -gt "$BOOT_WARN_MAX" ] && echo WARN || echo PASS
 }
+auth_class() { # failed logins in the last 24h
+  [ "$1" -lt 0 ] && { echo WARN; return; }
+  [ "$1" -gt "$AUTH_WARN_MAX" ] && echo WARN || echo PASS
+}
 disk_class() { # free percent
   [ "$1" -lt "$DISK_MIN_PCT" ] && echo WARN || echo PASS
 }
@@ -144,6 +153,7 @@ printf 'temp=%s\n'      "$(vcgencmd measure_temp 2>/dev/null | cut -d= -f2)"
 printf 'shot_age=%s\n'  "$(newest_age "$HOME/petcam/shots")"
 printf 'frame_age=%s\n' "$(newest_age /dev/shm/petcam/frames)"
 printf 'boots=%s\n'     "$boots"
+printf 'authfail=%s\n'  "$(journalctl -u ssh --since '-24h' --no-pager 2>/dev/null | grep -cE 'Failed password|Invalid user')"
 REMOTE
 }
 
@@ -156,6 +166,11 @@ done
 printf 'proton0=%s\n' "$(ip link show proton0 >/dev/null 2>&1 && echo up || echo down)"
 # petcam state is on this box since 2026-11-08 (app :8082 behind nginx, detector).
 printf 'detect=%s\n' "$(pgrep -f 'petcam-detect[.]py' >/dev/null && echo up || echo down)"
+# Detection sits here: nginx has no log to count 401s in, jellyfin fires
+# fail2ban, and both are only reachable from the outside through the tunnel.
+printf 'authfail=%s\n' "$(journalctl -u sshd --since '-24h' --no-pager 2>/dev/null | grep -cE 'Failed password|Invalid user')"
+printf 'bt401=%s\n'    "$(awk '$9 == 401' /var/log/nginx/access.log 2>/dev/null | wc -l)"
+printf 'banned=%s\n'   "$(fail2ban-client status 2>/dev/null | sed -n 's/.*Banned IP list: *//p' | wc -w)"
 # /srv is the root fs on this box, /srv/media is the 3.6T USB library; the
 # awk dedupes so the root fs is not reported twice.
 df -P / /srv /srv/media 2>/dev/null |
@@ -202,6 +217,9 @@ check_tom() {
   else
     emit WARN boots/24h "$b in 24h — see docs/server/todo/tom-reboots-hang-2026-10-31.md"
   fi
+
+  local af; af=$(get authfail)
+  emit "$(auth_class "$af")" auth/24h "$af failed ssh logins"
   host_end
 }
 
@@ -234,6 +252,12 @@ check_ralph() {
   else
     emit FAIL proton0 "down — qBittorrent is bound to it, Proton VPN is off"
   fi
+
+  local af b401 ban
+  af=$(get authfail); b401=$(get bt401); ban=$(get banned)
+  emit "$(auth_class "$af")" auth/24h "$af failed ssh logins"
+  emit "$(auth_class "$b401")" bt-401 "$b401 rejected /bt/ requests (log lifetime)"
+  emit PASS fail2ban "$ban banned right now"
 
   local mp pct
   while IFS= read -r line; do
@@ -298,6 +322,11 @@ selftest() {
   t PASS "$(boots_class "$BOOT_WARN_MAX")" "BOOT_WARN_MAX boots is still normal"
   t WARN "$(boots_class $((BOOT_WARN_MAX + 1)))" "one over BOOT_WARN_MAX"
   t WARN "$(boots_class -1)" "boot count unreadable"
+
+  t PASS "$(auth_class 3)" "3 failed logins"
+  t PASS "$(auth_class "$AUTH_WARN_MAX")" "failed logins exactly at AUTH_WARN_MAX"
+  t WARN "$(auth_class $((AUTH_WARN_MAX + 1)))" "one over AUTH_WARN_MAX"
+  t WARN "$(auth_class -1)" "failed logins unreadable"
 
   t PASS "$(disk_class 50)" "disk 50% free"
   t WARN "$(disk_class $((DISK_MIN_PCT - 1)))" "disk just under DISK_MIN_PCT"

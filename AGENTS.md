@@ -9,9 +9,20 @@ Jason, Rose and Ralph are hosts. Only paths and repo URLs say `homelab`.
 It should use the following:
 - Proton VPN
 - Proton Drive
+- Proton Pass
 - Cloudflare Tunnelling
 
 It is currently hosting a Website: andrewahale.com
+
+There is a security posture + open work in docs/security/README.md. Don't
+duplicate it here; the rules that matter day to day:
+- Nothing listens on the WAN. Ingress is one outbound Cloudflare tunnel on Ralph,
+  and origin services bind loopback.
+- Firewalls allow per service, never per subnet, and both hosts have ufw on.
+- Human credentials live in Proton Pass (machine/boot secrets in `pass` or on
+  disk, never in this repo — it is public).
+- Tailnet SSH authenticates by identity, not keys: see docs/security/todo/
+  lan-trust-2026-11-08.md before adding a node.
 
 There is a TODO.md that tracks the items to work on. These are high level items, and each will have there own docs and folders here.
 
@@ -24,7 +35,10 @@ Tom (Raspberry Pi 5) now runs only the Petcam (camera, YOLO detector, and the we
 Jellyfin and Website are accessible off the network.
 Jellyfin is behind a secure password.
 Website is public, but the Petcam is behind Cloudflare SSO.
-qBittorrent is network only and has a strict whitelist.
+qBittorrent is network only: its WebUI binds loopback on Ralph, nginx on `/bt/`
+puts basic auth in front, and ufw + the tunnel's ingress keep it off the WAN.
+There is no IP whitelist in qBittorrent itself (an earlier note here claimed
+one) — the scoping is the firewall and the ingress config.
 
 Jason (Desktop) does YOLO model fine tuning for the Petcam.
 

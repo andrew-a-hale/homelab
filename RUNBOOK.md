@@ -72,10 +72,10 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
   Users re-set their own passwords. `systemctl enable --now jellyfin`.
 - **qBittorrent** — `qbittorrent-nox@qbittorrent`, whose `ExecStartPre` waits
   for `proton0`. Bind the network interface to `proton0` in its settings
-  (`Session\Interface=proton0`; leak protection) and set the web login to
-  `andy`/`pancake` in `/etc/nginx/htpasswd` (`*/bt/` basic auth; qBit's own
-  WebUI is localhost-only with auth off). Torrent state is not preserved
-  either: re-add what you still want.
+  (`Session\Interface=proton0`; leak protection). The WebUI stays loopback with
+  its own auth off; `/bt/` gets basic auth from nginx (`/etc/nginx/htpasswd`,
+  user `andy`, password from the pass/Proton Pass entry — see the secrets table).
+  Torrent state is not preserved either: re-add what you still want.
 - **Proton VPN** — `wg-quick@proton0` with `/etc/wireguard/proton0.conf`
   (secret, see below), enabled at boot, plus `proton-guard.timer` (every 5 min)
   running `proton-guard.service` → `install -m755 scripts/proton-guard.sh
@@ -86,19 +86,32 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
   `/etc/cloudflared/config.yaml` (shape in `docs/ralph/`).
 - **Tailscale** — `tailscale up`, then in the admin console: disable key
   expiry and set ACL `ssh` to `accept` (docs/vpn/complete/tailnet-key-expiry-2026-11-07.md).
-- **Firewall (ufw)**:
+- **Delivery / detection** — `pacman -S fail2ban`, then
+  `/etc/fail2ban/jail.local` with `ignoreip = 127.0.0.1/8 ::1` (cloudflared
+  reaches origins from loopback; banning it takes the site down) and jails
+  `sshd` (backend `systemd`), `nginx-http-auth` (backend `auto`,
+  `/var/log/nginx/error.log`) and `jellyfin` (custom filter: see
+  `docs/security/complete/host-hardening-and-detection-2026-11-08.md`).
+  `systemctl enable --now fail2ban`.
+- **Jellyfin proxy trust** — `/etc/jellyfin/network.xml` needs
+  `<KnownProxies>127.0.0.1, ::1</KnownProxies>` + `IsRemoteAccessAllowed`,
+  otherwise every internet request looks local and is logged as `127.0.0.1`.
+- **Firewall (ufw)** — per service, never per subnet:
 
   ```
   ufw default deny incoming
   ufw default allow outgoing
-  ufw allow from 192.168.1.0/24
-  ufw allow from 100.64.0.0/10
-  ufw allow 41641/udp        # tailscale direct connections
+  ufw allow in on tailscale0 to any port 22 proto tcp
+  ufw allow in on tailscale0 to any port 80 proto tcp
+  ufw allow in on tailscale0 to any port 8096 proto tcp
+  ufw allow from 192.168.1.0/24 to any port 80 proto tcp     # nginx: /bt/ /jf/ site
+  ufw allow from 192.168.1.0/24 to any port 8096 proto tcp   # Jellyfin for TV/phone
+  ufw allow 41641/udp                                       # tailscale direct
   ufw enable
   ```
 
-  No WAN inbound is needed at all: the tunnel dials out. LAN and tailnet are
-  trusted whole.
+  No WAN inbound is needed at all: the tunnel dials out. LAN `:22` is
+  deliberately **not** open — admin SSH is tailnet-only.
 
 ## Tom (petcam only — capture and nothing else since 2026-11-08)
 
@@ -110,6 +123,30 @@ website, no unit for the gallery — the detector, the app and all petcam state
 (`~/petcam/{model,tolabel,training,shots}`) live on **Ralph** now, because the
 CSI camera is the only thing that cannot leave. Join the tailnet, give it a
 static IP, and that is the whole box.
+
+Then harden it as built (`docs/security/complete/host-hardening-and-detection-2026-11-08.md`):
+
+```
+# sshd: key-only. Check the drop-in dir FIRST — a cloud-init file saying
+# "PasswordAuthentication yes" wins if it sorts earlier (delete it).
+/etc/ssh/sshd_config.d/99-hardening.conf:
+  PasswordAuthentication no
+  PermitRootLogin no
+  KbdInteractiveAuthentication no
+  AllowUsers tom
+systemctl disable --now wayvnc.service wayvnc-control.service rpcbind.service rpcbind.socket
+ufw default deny incoming; ufw allow in on tailscale0; ufw allow 41641/udp
+ufw allow from 192.168.1.0/24 to any port 22 proto tcp; ufw enable
+# /etc/sudoers: passwordless only for the cron caller
+#   tom ALL=(root) NOPASSWD: /usr/local/bin/wifi-guard.sh
+```
+
+**Tailnet:** Tom is scheduled to *leave* it
+(`docs/security/todo/lan-trust-2026-11-08.md` §5 — Ralph takes the
+`192.168.1.0/24` route and the petcam-static bind moves to `192.168.1.24`). Until
+that is approved in the console Tom stays a node, and note that tailnet SSH to
+Tom is **Tailscale SSH** (identity, `using "none"`), so the sshd hardening above
+covers the LAN path only.
 
 Packages: `ffmpeg python3` (`rpicam-apps` ships with Raspberry Pi OS).
 Rebuild detail and the rollback path: `docs/petcam/complete/tom-camera-appliance-2026-11-08.md`.
@@ -123,7 +160,7 @@ Rebuild detail and the rollback path: `docs/petcam/complete/tom-camera-appliance
 | Tailscale node keys | `/var/lib/tailscale` | `tailscale up` + approve in the admin console (or auth key) |
 | GitHub push key | `~/.ssh/id_ed25519` on each host that clones (ralph, jason, tom) | `ssh-keygen` + add pubkey to the GitHub account |
 | Jellyfin users | `/var/lib/jellyfin` | first-run wizard / admin reset — passwords are gone, that is the deal |
-| qBittorrent login + state | `/var/lib/qbittorrent` | set login fresh (`andy`/`pancake` in `/etc/nginx/htpasswd`), re-add torrents |
+| qBittorrent login + state | `/etc/nginx/htpasswd`, `/var/lib/qbittorrent` | rotate with `openssl passwd -apr1 -stdin` (htpasswd is not installed on Ralph), store the value in Proton Pass, `systemctl reload nginx`; re-add torrents |
 
 | SSH host keys | `/etc/ssh` | regenerated on install; refresh known_hosts |
 | Router admin | sticker / ISP account | physical |
