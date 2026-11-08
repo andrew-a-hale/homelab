@@ -444,8 +444,11 @@ if __name__ == "__main__":
         sys.exit(0)
     if "--score-corpus" in sys.argv:
         i = sys.argv.index("--score-corpus")
-        out_path = sys.argv[i + 1] if i + 1 < len(sys.argv) and not sys.argv[i + 1].startswith("-") else os.path.join(os.path.dirname(TRAIN_IMG), "yolo-scores.json")
-        score_corpus(out_path)
+        rest = [a for a in sys.argv[i + 1:] if not a.startswith("-")]
+        out_path = rest[0] if rest else os.path.join(
+            os.path.dirname(TRAIN_IMG), "yolo-scores.json")
+        img_dir = rest[1] if len(rest) > 1 else None  # local/alternate corpus
+        score_corpus(out_path, img_dir)
         sys.exit(0)
     if "--capture" in sys.argv:
         img = cv2.imread(STILL)
