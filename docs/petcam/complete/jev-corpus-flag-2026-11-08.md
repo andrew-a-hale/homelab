@@ -62,12 +62,29 @@ After fixing the descriptions: 82% overall, 85% on the both-named subset. Rule:
 describe the referents precisely and verify a description against ground truth
 before trusting a batch result.
 
+## Outcome: the owner worked the flag queue (2026-11-08, same day)
+
+The owner reviewed the flagged frames by eye and **confirmed none of Jev's
+flags** — every flag was a Jev error, and the corpus labels were right. That
+also settles the circularity caveat above: the labels are independently
+verified, so YOLO's 93% naming is a real score, not just training-set agreement.
+
+**Decision:** YOLO stays the only model in the live pipeline. Jev gets **no
+live role** — its naming (85%) loses to YOLO (93%), its presence edge (95% vs
+89%) came with a 13% over-call rate on verified negatives (56/416), and its
+entire first audit round produced zero true flags. `scripts/petcam-jev.py`
+stays as an occasional tool: worth a re-run only when the corpus distribution
+actually changes (a new cat, a new camera angle, a new room), where an
+independent vision system could catch label drift that a label-trained model
+cannot. `flags.txt` was cleared after the review; re-running the batch
+regenerates it.
+
 ## Where this leaves us
 
-- The 94 flags are the current second-review queue at `/review` (flagged
-  filter). Working through them feeds the next retrain with cleaner labels.
-- YOLO remains the detector. Its 93% naming beats Jev's 85% on the current
-  labels, but it learned those labels — Jev is the independent second opinion,
-  and it also covers 21 of YOLO's 22 detection misses.
-- Re-run the audit after the next retrain (or any corpus clean-up):
+- The flag queue is empty (cleared 2026-11-08 after the owner's review); the
+  corpus is fully reviewed (617+ verified by eye).
+- YOLO remains the detector and the namer. Its 93% naming is a real score now
+  that the labels have independent verification.
+- Jev's role: occasional corpus audit only (see Outcome above). Re-run after
+  the next retrain only if the corpus distribution changed:
   `scripts/petcam-jev.py --from-tom --yolo-scores … --push-flags`.

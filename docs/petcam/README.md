@@ -190,9 +190,10 @@ Full procedure in `skills/petcam-retrain/SKILL.md`.
 
 `typesafe/jev-1.14` (OpenRouter Decisions API) sees images and answers typed
 questions with probabilities — audited the corpus 2026-11-08: 95% presence,
-85% naming vs YOLO's 93% (label-trained) and hue's 79%, with ~94 frames flagged
-into `/review` for a second look. Full numbers, cost and the
-inverted-coat-description lesson in
+85% naming vs YOLO's 93% (label-trained) and hue's 79%. The owner then worked
+the 119 flagged frames and confirmed **none** of Jev's flags: YOLO stays the
+only model in the pipeline, Jev is an occasional audit tool. Full numbers,
+cost and the inverted-coat-description lesson in
 `complete/jev-corpus-flag-2026-11-08.md`. The pieces:
 
 - `scripts/petcam-detect.py --score-corpus [out.json]` (on Tom, where the ONNX
@@ -210,3 +211,5 @@ inverted-coat-description lesson in
 - Cascade shape if it goes live: YOLO keeps detection (free, local), Jev names
   the detected cat (~$0.00012 per detection, ~$0.50/month at the current
   ~134 detections/day). Per-frame Jev was rejected: ~$10/day at 1 fps.
+  **Retired 2026-11-08**: the owner confirmed 0 of Jev's flags were real, so
+  Jev gets no live role — audit runs only (see the complete/ doc).
