@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-07
 **Status:** done, verified server-side. **Playback not yet confirmed by a human.**
-**Ticket:** [`../todo/migration-2026-11-07.md`](../todo/migration-2026-11-07.md)
+**Ticket:** [`migration-2026-11-07.md`](migration-2026-11-07.md)
 
 59G of media and the whole Jellyfin install moved from Jason/Tom to Ralph in one
 evening. This is the record of the route taken, because the obvious routes were

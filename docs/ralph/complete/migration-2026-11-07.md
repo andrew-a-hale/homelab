@@ -58,7 +58,7 @@ house that has a documented history of wifi wedges on Tom. Ralph should be wired
 
 ### 1. Media onto Ralph — DONE
 59G via USB stick, see
-[`../complete/media-and-jellyfin-2026-11-07.md`](../complete/media-and-jellyfin-2026-11-07.md).
+[`media-and-jellyfin-2026-11-07.md`](media-and-jellyfin-2026-11-07.md).
 Jellyfin is installed and its config migrated too. The Jason source copy was
 verified file-by-file against Ralph (`rsync -c`, 61/61 identical) and deleted
 2026-11-07; only `/mnt/storage/backup` remains on Jason.
@@ -69,7 +69,7 @@ from Tom (same version), libraries resolving through the `/mnt/storage/media →
 /srv/media` symlink. BaseUrl is `/jf`, so it answers at `/jf/` and not at root.
 Jellyfin is in Arch's official repos now, so the AUR/Docker question is moot, and
 Guix has no Jellyfin at all — services belong to the distro anyway. Details and
-the three sharp edges: [`../complete/media-and-jellyfin-2026-11-07.md`](../complete/media-and-jellyfin-2026-11-07.md).
+the three sharp edges: [`media-and-jellyfin-2026-11-07.md`](media-and-jellyfin-2026-11-07.md).
 
 ### 3. nginx + the Go website
 nginx on Ralph with the same `/jf/` and `/bt/` shape. The Go site's
@@ -98,7 +98,7 @@ Stop jellyfin, qbittorrent, proton **and nginx**; keep petcam, ssh and the
 health cron. Playback on Ralph verified by a real watch (Kokuho, 2026-11-07).
 Petcam became a standalone app on Tom (tailnet bind, Ralph nginx in front) so
 Tom no longer needs a web server at all — see
-[`../petcam/complete/standalone-app-2026-11-07.md`](../../petcam/complete/standalone-app-2026-11-07.md).
+[`../../petcam/complete/standalone-app-2026-11-07.md`](../../petcam/complete/standalone-app-2026-11-07.md).
 Then Tom's hourly hard-reset matters a lot less.
 
 ## Open decisions

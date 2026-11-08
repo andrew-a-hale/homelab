@@ -14,7 +14,7 @@ Pi era. Tom stopped running qBittorrent when the stack moved to Ralph
   or `andy`/`homelab`: `RUNBOOK.md`, `TODO.md`, `docs/media/README.md`,
   `docs/server/README.md`, `docs/ralph/README.md`,
   `docs/ralph/complete/{qbittorrent-vpn,simplify}-2026-11-07.md`,
-  `docs/ralph/todo/migration-2026-11-07.md`.
+  `docs/ralph/complete/migration-2026-11-07.md`.
 
 ## Verified on Tom
 

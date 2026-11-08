@@ -35,9 +35,11 @@ headless, reached over SSH and nothing else. Arch base + Guix for packages.
   `sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 /dev/nvme0n1p2`.
 - **Unattended reboot verified 2026-11-07:** power cycle to SSH 26s, nobody at
   the console.
-- **Secure Boot is off.** PCR 7 therefore measures little; the TPM protects
-  against drive removal, not against someone booting a USB stick on the box.
-  See `todo/secureboot-tpm2-*.md`.
+- **Secure Boot is off, deliberately.** PCR 7 therefore measures little; the TPM
+  protects against drive removal, not against someone booting a USB stick on the
+  box. Own keys via `sbctl` were decided against: they only harden the auto-unlock
+  seal against a targeted evil maid who can modify the boot partition and wait for
+  the next boot, and LUKS alone already covers opportunistic theft.
 - **i5-9500T is vPro-capable** → Intel AMT could give an out-of-band console for
   the exact failure mode this box has (needs a keyboard at the LUKS prompt).
 - **No swap.** 15GB RAM, nothing hibernates.

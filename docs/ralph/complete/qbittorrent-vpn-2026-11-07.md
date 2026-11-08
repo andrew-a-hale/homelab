@@ -68,8 +68,8 @@ traffic fails. Fail-closed.
 ## Why not the Proton CLI
 
 `proton-vpn-cli` SSO needs a Secret Service keyring; headless Ralph has none,
-five `signin` attempts, zero persisted sessions (see the pre-move notes in
-`todo/` history / git). WireGuard config: same protection, no daemon, no D-Bus.
+five `signin` attempts, zero persisted sessions (see the pre-move notes in git
+history). WireGuard config: same protection, no daemon, no D-Bus.
 
 ## Verified (2026-11-07)
 
@@ -102,7 +102,7 @@ https://andrewahale.com/: 200
 
 ## Left open
 
-- qBit on Tom is still running; Tom's own Proton/qBit stack retires in
-  `todo/migration-2026-11-07.md`.
+- qBit on Tom is still running; Tom's own Proton/qBit stack retires per
+  `migration-2026-11-07.md` (done 2026-11-08).
 - IPv6 egress via proton0 exists (address assigned) but was not exercised;
   qBit binding covers it either way.

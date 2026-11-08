@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-07
 **Status:** done, verified (unattended reboot proven, SSH working).
-**Ticket:** none — greenfield; tracked in [`../../TODO.md`](../../TODO.md).
+**Ticket:** none — greenfield; tracked in [`../../../TODO.md`](../../../TODO.md).
 
 New mini PC arrived and became Ralph, the always-on server. This records the
 setup so the box can be rebuilt from a USB stick without rediscovering the
