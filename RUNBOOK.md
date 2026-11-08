@@ -13,12 +13,18 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
 
 ### 1. Base
 
-1. Arch install, LUKS on the NVMe. TPM2 auto-unlock is optional (see TODO).
+1. Arch install, LUKS2 on the NVMe (btrfs subvols `@ @home @log @pkg
+   @snapshots`, systemd-boot, ESP at `/boot`; `scripts/ralph-arch-install.sh`
+   then `scripts/ralph-finish.sh` are the actual install). TPM2 auto-unlock is
+   enrolled on the live box (LUKS token 0, PCR 7) — without it every reboot
+   stops at a passphrase prompt, and there is no keyboard at the shelf.
 2. Media drive: ext4, label `media`, mounted at `/srv/media`, fstab with
    `nofail`. Keep the symlink `ln -s /srv/media /mnt/storage/media` — the
    Jellyfin config references that path.
-3. `pacman -S jellyfin nginx cloudflared qbittorrent-nox tailscale wireguard-tools ufw`
-   (Guix is an optional layer on top; nothing in the stack needs it.)
+3. `pacman -S jellyfin-server jellyfin-web jellyfin-ffmpeg nginx cloudflared
+   qbittorrent-nox tailscale wireguard-tools ufw go`
+   (Guix is an optional layer on top; nothing in the stack needs it — on the
+   live box `/gnu/store` holds only `guix` and `nss-certs`.)
 
 ### 2. Code
 
@@ -28,9 +34,11 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
    `andrewhale-web.service` (User=andy, WorkingDirectory=/srv/website/web,
    listens `127.0.0.1:8080`).
 3. nginx: copy `docs/ralph/nginx-ralph.conf` and `docs/ralph/petcam.conf`
-   (if present) to `/etc/nginx/conf.d/`. Everything is reached through nginx
-   on :80: `/jf/` → 8096, `/bt/` → 8081 (basic auth), `/static/dht.json` →
-   `/srv/dht/dht.json`, rest → 127.0.0.1:8080.
+   (if present) to `/etc/nginx/conf.d/`. nginx listens on :80: `/jf/` → 8096,
+   `/bt/` → 8081 (basic auth), `/static/dht.json` → `/srv/dht/dht.json`, rest →
+   127.0.0.1:8080. One hostname skips nginx: the cloudflared ingress points
+   `jellyfin.andrewahale.com` straight at 127.0.0.1:8096, because its BaseUrl
+   already carries `/jf`.
 4. DHT: `install -m755 scripts/dht-writer.sh /usr/local/bin/dht-writer`, then
    this unit as `/etc/systemd/system/dht.service`:
 
@@ -52,18 +60,24 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
 ### 3. Services
 
 - **Jellyfin** — config (`/var/lib/jellyfin`) is *not* preserved: run the
-  first-run wizard, set BaseUrl to `/jf`, libraries ` /srv/media/media/{movies,tv}`
-  (i.e. `/mnt/storage/media/...`). Users re-set their own passwords.
-  `systemctl enable --now jellyfin`.
+  first-run wizard, set BaseUrl to `/jf`, libraries `/srv/media/{movies,tv}`
+  (the library links store `/mnt/storage/media/...`, the symlink to
+  `/srv/media`; `/srv/media/music` exists but is not a library). Add the
+  drop-in `jellyfin.service.d/` with `RequiresMountsFor=/srv/media` so an
+  unplugged media drive stops Jellyfin instead of serving empty libraries.
+  Users re-set their own passwords. `systemctl enable --now jellyfin`.
 - **qBittorrent** — `qbittorrent-nox@qbittorrent`, whose `ExecStartPre` waits
-  for `proton0`. Bind the interface to `10.2.0.2` in its settings (leak
-  protection) and set the web login to `andy`/`pancake` in
-  `/etc/nginx/htpasswd` (`*/bt/` basic auth; qBit's own WebUI is
-  localhost-only with auth off). Torrent state is not preserved either: re-add
-  what you still want.
+  for `proton0`. Bind the network interface to `proton0` in its settings
+  (`Session\Interface=proton0`; leak protection) and set the web login to
+  `andy`/`pancake` in `/etc/nginx/htpasswd` (`*/bt/` basic auth; qBit's own
+  WebUI is localhost-only with auth off). Torrent state is not preserved
+  either: re-add what you still want.
 - **Proton VPN** — `wg-quick@proton0` with `/etc/wireguard/proton0.conf`
-  (secret, see below), enabled at boot, plus `proton-guard.timer` (every 5 min) to
-  re-raise `proton0` if it ever drops.
+  (secret, see below), enabled at boot, plus `proton-guard.timer` (every 5 min)
+  running `proton-guard.service` → `install -m755 scripts/proton-guard.sh
+  /usr/local/bin/proton-guard.sh`, which re-raises `proton0` if it ever drops
+  (the two unit files live on the box, not in this repo; the guard is what
+  actually brings the tunnel up in practice).
 - **Cloudflared** — `docs/ralph/cloudflared.service`, config at
   `/etc/cloudflared/config.yaml` (shape in `docs/ralph/`).
 - **Tailscale** — `tailscale up`, then in the admin console: disable key
@@ -96,14 +110,15 @@ laptop under `~/petcam-train`). Join the tailnet. Nothing else belongs on Tom.
 | Cloudflare tunnel | `/etc/cloudflared/{cert.pem,<tunnel-id>.json,config.yaml}` | Cloudflare dashboard → Zero Trust → Tunnels → create tunnel, `cloudflared tunnel login/create/token`; ingress shape in `docs/ralph/` |
 | Proton VPN WireGuard key | `/etc/wireguard/proton0.conf` | Proton VPN dashboard → WireGuard → add key → download .conf |
 | Tailscale node keys | `/var/lib/tailscale` | `tailscale up` + approve in the admin console (or auth key) |
-| GitHub push key | Tom's `~/.ssh/id_ed25519` | `ssh-keygen` + add pubkey to the GitHub account |
+| GitHub push key | `~/.ssh/id_ed25519` on each host that clones (ralph, jason, tom) | `ssh-keygen` + add pubkey to the GitHub account |
 | Jellyfin users | `/var/lib/jellyfin` | first-run wizard / admin reset — passwords are gone, that is the deal |
 | qBittorrent login + state | `/var/lib/qbittorrent` | set login fresh (`andy`/`pancake` in `/etc/nginx/htpasswd`), re-add torrents |
 
-Tom has no qBittorrent at all since 2026-11-08: binary, unit and nginx removed
-(`qbittorrent-nox@tom` is `not-found`).
 | SSH host keys | `/etc/ssh` | regenerated on install; refresh known_hosts |
 | Router admin | sticker / ISP account | physical |
+
+Tom has no qBittorrent at all since 2026-11-08: binary, unit and nginx removed
+(`qbittorrent-nox@tom` is `not-found`).
 
 Not a secret but with **no second copy**: the 62G of media on `/srv/media`.
 Re-rip or re-torrent if the drive dies. Say the word if that changes.
