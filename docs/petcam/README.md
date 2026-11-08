@@ -189,9 +189,10 @@ Full procedure in `skills/petcam-retrain/SKILL.md`.
 ### Jev second-opinion pass (2026-11-08)
 
 `typesafe/jev-1.14` (OpenRouter Decisions API) sees images and answers typed
-questions with probabilities — tried on the corpus 2026-11-08, it named every
-cat frame right, including backlit silhouettes where the hue classifier fails,
-and caught a mislabeled negative. Trial details in
+questions with probabilities — audited the corpus 2026-11-08: 95% presence,
+85% naming vs YOLO's 93% (label-trained) and hue's 79%, with ~94 frames flagged
+into `/review` for a second look. Full numbers, cost and the
+inverted-coat-description lesson in
 `complete/jev-corpus-flag-2026-11-08.md`. The pieces:
 
 - `scripts/petcam-detect.py --score-corpus [out.json]` (on Tom, where the ONNX
@@ -207,5 +208,5 @@ and caught a mislabeled negative. Trial details in
   flagged filter; the app clears a flag when the frame is reviewed/negated/
   deleted. Regenerate flags by re-running the batch.
 - Cascade shape if it goes live: YOLO keeps detection (free, local), Jev names
-  the detected cat (~$0.00012 per detection — detections are a few per hour,
-  not per frame).
+  the detected cat (~$0.00012 per detection, ~$0.50/month at the current
+  ~134 detections/day). Per-frame Jev was rejected: ~$10/day at 1 fps.
