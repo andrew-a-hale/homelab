@@ -616,6 +616,65 @@ func handleReviewDeleteFrame(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/review", http.StatusSeeOther)
 }
 
+// handleReviewRelabel: pull a pair out of the corpus and back into /label's
+// queue for a fresh hand label. Form: name=<file>
+// The current first box becomes the queue proposal (sidecar `x1 y1 x2 y2
+// name`, pixels); negatives queue with no proposal. The pair, its reviewed
+// entry and any flag go away — a save or reject at /label writes the
+// replacement pair.
+func handleReviewRelabel(w http.ResponseWriter, r *http.Request) {
+	stem := strings.TrimSuffix(filepath.Base(r.FormValue("name")), ".jpg")
+	imgPath := filepath.Join(trainImg, stem+".jpg")
+	if _, err := os.Stat(imgPath); err != nil {
+		http.Error(w, "not in corpus", http.StatusNotFound)
+		return
+	}
+	if _, err := os.Stat(filepath.Join(tolabelDir, stem+".jpg")); err == nil {
+		http.Error(w, "queue already has that name", http.StatusConflict)
+		return
+	}
+	data, err := os.ReadFile(imgPath)
+	if err != nil {
+		http.Error(w, "read failed", http.StatusInternalServerError)
+		return
+	}
+	proposal := ""
+	if lines, _, err := labelLines(stem); err == nil && len(lines) > 0 {
+		fields := strings.Fields(lines[0])
+		if len(fields) >= 5 {
+			var cx, cy, bw, bh float64
+			fmt.Sscanf(strings.Join(fields[1:5], " "), "%f %f %f %f", &cx, &cy, &bw, &bh)
+			if f, err := os.Open(imgPath); err == nil {
+				if cfg, err := jpeg.DecodeConfig(f); err == nil {
+					W, H := float64(cfg.Width), float64(cfg.Height)
+					x1, y1 := int((cx-bw/2)*W), int((cy-bh/2)*H)
+					x2, y2 := int((cx+bw/2)*W), int((cy+bh/2)*H)
+					name := "pancake"
+					if fields[0] == "1" {
+						name = "willow"
+					}
+					proposal = fmt.Sprintf("%d %d %d %d %s", x1, y1, x2, y2, name)
+				}
+				f.Close()
+			}
+		}
+	}
+	if err := os.WriteFile(filepath.Join(tolabelDir, stem+".jpg"), data, 0o644); err != nil {
+		http.Error(w, "queue write failed", http.StatusInternalServerError)
+		return
+	}
+	if proposal != "" {
+		_ = os.WriteFile(filepath.Join(tolabelDir, stem+".txt"), []byte(proposal), 0o644)
+	}
+	_ = os.Remove(imgPath)
+	_ = os.Remove(filepath.Join(trainLbl, stem+".txt"))
+	reviewed := loadReviewed()
+	delete(reviewed, stem)
+	writeReviewed(reviewed)
+	clearFlag(stem)
+	http.Redirect(w, r, "/review", http.StatusSeeOther)
+}
+
 // handleReviewDone: toggle the verified flag for a frame. Form: name=<file> done=1|0
 func handleReviewDone(w http.ResponseWriter, r *http.Request) {
 	stem := strings.TrimSuffix(filepath.Base(r.FormValue("name")), ".jpg")
@@ -722,6 +781,7 @@ func PetcamMuxSetup() *http.ServeMux {
 	petcam.HandleFunc("POST /review/negative", handleReviewNegative)
 	petcam.HandleFunc("POST /review/delete", handleReviewDeleteFrame)
 	petcam.HandleFunc("POST /review/done", handleReviewDone)
+	petcam.HandleFunc("POST /review/relabel", handleReviewRelabel)
 	petcam.Handle("/review/img/", noStore(http.StripPrefix("/review/img/", http.FileServer(http.Dir(trainImg)))))
 	petcam.Handle("/shots/", noStore(http.StripPrefix("/shots/", http.FileServer(http.Dir(shotsDir)))))
 	petcam.Handle("/hls/", noStore(http.StripPrefix("/hls/", http.FileServer(http.Dir(hlsDir)))))

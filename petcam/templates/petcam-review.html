@@ -29,9 +29,9 @@
         <a href="/review">review</a>
     </nav>
     <p>Verify the auto-labeled training corpus before a retrain. Red dashed boxes
-       disagree with the colour hint (orange fraction vs 0.18); ⚑ frames were
-       flagged by the Jev pass — look at those first, but neither hint decides a
-       label. Keys: ← → move · D reviewed · N no cat · X delete frame.</p>
+       disagree with the colour hint (orange fraction vs 0.18); ⚑ marks an audit
+       flag. Neither hint decides a label. Keys: ← → move · D reviewed ·
+       N no cat · R back to label queue · X delete frame.</p>
     <div id="wrap">
         <img id="img" alt="training frame">
     </div>
@@ -39,13 +39,13 @@
     <div class="bar">
         <button id="done">✓ reviewed (D)</button>
         <button id="neg">no cat → negative (N)</button>
+        <button id="relabel">→ label queue (R)</button>
         <button id="del">delete frame (X)</button>
         <button id="prev">← prev</button>
         <button id="next">next →</button>
         <span id="filters">filter:
             <button data-f="all" class="fbtn">all</button>
             <button data-f="unreviewed" class="fbtn">unreviewed</button>
-            <button data-f="flagged" class="fbtn">flagged</button>
         </span>
         <span id="info">loading corpus…</span>
     </div>
@@ -166,9 +166,19 @@
             });
         }
 
+        function relabel() {
+            if (!cur || !confirm("Move " + cur.name + " back to the label queue?")) return;
+            post("/review/relabel", { name: cur.name }).then(() => {
+                items.splice(items.indexOf(cur), 1);
+                buildView();
+                render();
+            });
+        }
+
         const step = n => { idx = Math.min(Math.max(idx + n, 0), view.length - 1); render(); };
         document.getElementById("done").onclick = markDone;
         document.getElementById("neg").onclick = negative;
+        document.getElementById("relabel").onclick = relabel;
         document.getElementById("del").onclick = deleteFrame;
         document.getElementById("prev").onclick = () => step(-1);
         document.getElementById("next").onclick = () => step(1);
@@ -176,11 +186,16 @@
         img.onload = layoutBoxes;
 
         document.addEventListener("keydown", e => {
-            if (e.key === "ArrowRight") step(1);
-            else if (e.key === "ArrowLeft") step(-1);
-            else if (e.key === "d") markDone();
-            else if (e.key === "n") negative();
-            else if (e.key === "x") deleteFrame();
+            if (e.altKey || e.ctrlKey || e.metaKey) return;
+            const act = {
+                "ArrowRight": () => step(1),
+                "ArrowLeft": () => step(-1),
+                "d": () => cur && markDone(),
+                "n": () => cur && negative(),
+                "r": () => cur && relabel(),
+                "x": () => cur && deleteFrame(),
+            }[e.key];
+            if (act) { e.preventDefault(); act(); }
         });
 
         fetch("/review/list", { cache: "no-store" })
