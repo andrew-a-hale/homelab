@@ -3,7 +3,7 @@
 # Run after curating on https://petcam.andrewahale.com/label
 #   EPOCHS=50 scripts/train-model.sh   # optional override (default 100)
 #
-# Held-out experiment mode (see docs/petcam/todo/yolo-jev-model-selection-2026-11-08.md):
+# Held-out experiment mode (see docs/petcam/complete/yolo-jev-heldout-2026-11-08.md):
 #   HOLDOUT_DAYS=2026-10-31,2026-11-05,2026-11-08 \
 #   VAL_DAYS=2026-10-30,2026-11-04 \
 #   RUN=petcam-heldout scripts/train-model.sh

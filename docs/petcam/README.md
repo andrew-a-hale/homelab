@@ -212,6 +212,22 @@ cost and the inverted-coat-description lesson in
   ~134 detections/day). Per-frame Jev was rejected: ~$10/day at 1 fps.
   **Retired 2026-11-08**: the owner confirmed 0 of Jev's flags were real, so
   Jev gets no live role — audit runs only (see the complete/ doc).
-  Note: YOLO's 93% was measured on its own training data; a fair held-out
-  comparison (day-grouped split, retrain, CIs + McNemar) is planned in
-  [todo/yolo-jev-model-selection-2026-11-08.md](todo/yolo-jev-model-selection-2026-11-08.md).
+
+### Held-out benchmark (2026-11-08)
+
+The audit's YOLO 93% was resubstitution (training-data accuracy). A fair
+day-grouped experiment (frozen test days 2026-10-31 / 11-05 / 11-08, clean
+retrain, Wilson CIs + exact McNemar, `scripts/petcam-metrics.py`) found:
+deployed YOLO drops to **61% naming on days it never trained on**, a cleanly
+retrained model scores 47% (the hardest scene exists only on test days), and
+zero-shot Jev scores **95%** — ahead everywhere but not significantly vs the
+deployed model (p = 0.18). Decision: **YOLO stays the live detector + namer,
+Jev stays audit-only, YOLO-filter + Jev-namer cascade rejected** (82%
+end-to-end, loses Jev's edge). Full numbers, design and the frozen-day
+benchmark for future retrains in
+[complete/yolo-jev-heldout-2026-11-08.md](complete/yolo-jev-heldout-2026-11-08.md).
+
+- `scripts/petcam-metrics.py --labels DIR --stems test-stems.txt --model
+  name=scores.json [--hue name=scores.json] --jev jev-scores.json`: per-model
+  naming/recall/FPR with Wilson CIs, exact McNemar between model pairs, and
+  the day-cluster bootstrap CI — the frozen-day benchmark report.
