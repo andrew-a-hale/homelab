@@ -2,7 +2,7 @@
 
 ## Home Lab
 
-- [x] Setup a daily task to check if all the systems are working
+- [ ] Setup a daily task to check if all the systems are working (script + skill are in, [x] below; still needs a timer)
   - [x] Make a skill that documents the list of things to check and probably an uptime tool with logging
     — `scripts/homelab-health.sh` (one run = one line in `~/homelab-health.log`, the uptime
     history) + `skills/homelab-health/SKILL.md`. Not yet scheduled on a timer; install steps

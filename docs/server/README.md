@@ -242,3 +242,15 @@ for Docker, Jellyfin, Tailscale, nodesource, GitHub CLI and ProtonVPN.
 Deliberately apply the rpt stack when you want it, and remember it costs the
 clean-stretch clock. Background, the origin/label analysis and the revert path:
 `docs/server/complete/crash-capture-and-bootloader-2026-10-31.md`.
+
+## Monitoring — decision (2026-11-08)
+
+**One script, one log line per run: `scripts/homelab-health.sh`.** Checks Tom,
+Ralph and the public ingress from outside, appends a summary to
+`~/homelab-health.log` (the uptime history), exits non-zero on any FAIL.
+`skills/homelab-health/SKILL.md` says when to run it and what a failure means;
+`docs/server/complete/health-check-2026-11-08.md` has the decision.
+
+Not on a timer yet — it runs when a human or an agent runs it. It must run from a
+machine that can `ssh` both hosts (`ssh ralph` from Ralph fails host-key
+verification), so the timer belongs on the desktop, not the always-on box.
