@@ -5,14 +5,14 @@
 One request per frame (noul + choice + box share the image, ~$0.00012/frame at
 720p). Writes:
   <out>/jev-scores.json  per-frame Jev answer + usage (the raw evidence)
-  <out>/flags.txt        `stem reason...` per disagreement -> Tom's
-                         ~/petcam/training/flags.txt, shown by /review
+  <out>/flags.txt        `stem reason...` per disagreement -> the state
+                         host's ~/petcam/training/flags.txt, shown by /review
 and prints a label-vs-Jev-vs-YOLO report when --yolo-scores is given.
 
 Usage:
-  petcam-jev.py --from-tom                    # rsync corpus from tom, full run
+  petcam-jev.py --from-tom                    # rsync corpus from the state host, full run
   petcam-jev.py --corpus-dir DIR [--limit N]  # local corpus (images/ + labels/)
-  petcam-jev.py --from-tom --push-flags       # + scp flags.txt to tom
+  petcam-jev.py --from-tom --push-flags       # + scp flags.txt to the state host
   petcam-jev.py --from-tom --yolo-scores y.json   # merge the detector pass
 Key: $OPENROUTER_API_KEY, else `pass dev/openrouter`. Never stored here.
 """
@@ -29,7 +29,9 @@ import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
-TOM = "tom"
+# petcam state lives on Ralph since 2026-11-08; the --from-tom flag
+# keeps its old name because the corpus is still the "from Tom" pull.
+HOST = "ralph"
 MODEL = "typesafe/jev-1.14"
 URL = "https://openrouter.ai/api/alpha/decisions"
 CATS = ["pancake", "willow"]
@@ -188,13 +190,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--from-tom", action="store_true",
-                    help="rsync the training corpus from tom into a work dir first")
+                    help="rsync the training corpus from the state host (ralph) first")
     ap.add_argument("--corpus-dir", help="local corpus with images/ and labels/")
     ap.add_argument("--yolo-scores", help="petcam-detect.py --score-corpus JSON to merge")
     ap.add_argument("--out-dir", default=".amp/in/jev-corpus",
                     help="where jev-scores.json + flags.txt are written")
     ap.add_argument("--push-flags", action="store_true",
-                    help="scp flags.txt to tom:petcam/training/flags.txt")
+                    help="scp flags.txt to the state host's petcam/training/flags.txt")
     ap.add_argument("--limit", type=int, help="only the first N frames (alphabetical)")
     ap.add_argument("--stems", help="comma-separated stems to score (testing)")
     ap.add_argument("--jobs", type=int, default=4)
@@ -206,7 +208,7 @@ def main():
     if args.from_tom:
         corpus = out_dir / "training"
         for sub in ("images", "labels"):
-            subprocess.run(["rsync", "-aq", f"{TOM}:petcam/training/{sub}",
+            subprocess.run(["rsync", "-aq", f"{HOST}:petcam/training/{sub}",
                             str(corpus / sub)], check=True)
     else:
         corpus = pathlib.Path(args.corpus_dir)
@@ -237,9 +239,9 @@ def main():
     print(f"\nwrote {out_dir / 'jev-scores.json'} and {flags_path} "
           f"({len(flags)} flagged frames)")
     if args.push_flags:
-        subprocess.run(["scp", "-q", str(flags_path), f"{TOM}:petcam/training/flags.txt"],
+        subprocess.run(["scp", "-q", str(flags_path), f"{HOST}:petcam/training/flags.txt"],
                        check=True)
-        print(f"pushed flags.txt to {TOM}:petcam/training/flags.txt")
+        print(f"pushed flags.txt to {HOST}:petcam/training/flags.txt")
     report(jobs, args.yolo_scores)
 
 

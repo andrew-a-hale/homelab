@@ -8,7 +8,7 @@ The orange/gray label is drawn on the image.
 Model: YOLOv8n ONNX (COCO) via OpenCV DNN. MobileNet-SSD was tried first and
 called the empty cat bed a cat; YOLOv8n sorts that out.
 
-Usage: python3 petcam-detect.py          # loop (cron runs this)
+Usage: python3 petcam-detect.py          # loop (petcam-detect.service runs this)
        python3 petcam-detect.py --once    # single pass (manual testing)
        python3 petcam-detect.py --selftest
        python3 petcam-detect.py --score-corpus [out.json]  # offline: YOLO+hue over training/
@@ -19,11 +19,15 @@ import os
 import sys
 import time
 import random
+import urllib.request
 
 import cv2
 import numpy as np
 
-STILL = "/dev/shm/petcam/frames/latest.jpg"
+# Tom is a camera appliance since 2026-11-08: it only captures and serves
+# /dev/shm/petcam statically, the detector runs here (Ralph) and pulls the still.
+STILL = "http://100.77.132.110:8081/frames/latest.jpg"
+STILL_TIMEOUT_S = 5  # a wedged socket must skip a pass, not stall the loop
 SHOTS = os.path.expanduser("~/petcam/shots")
 MODEL = os.environ.get(
     "PETCAM_MODEL", os.path.expanduser("~/petcam/model/yolov8n.onnx")
@@ -171,13 +175,15 @@ def detect(net, img, roi=None):
     return out
 
 
-TRAIN_IMG = "/home/tom/petcam/training/images"  # auto-labeled: clean frames + YOLO txt
-TRAIN_LBL = (
-    "/home/tom/petcam/training/labels"  # one txt per image: class cx cy w h normalized
+# ~/petcam is the whole state dir: it lives on Ralph since 2026-11-08 (the
+# appliance split). expanduser keeps a rollback run on Tom honest.
+TRAIN_IMG = os.path.expanduser("~/petcam/training/images")  # clean frames + YOLO txt
+TRAIN_LBL = os.path.expanduser(
+    "~/petcam/training/labels"  # one txt per image: class cx cy w h normalized
 )
-TOLABEL = "/home/tom/petcam/tolabel"  # near-miss frames awaiting hand labels
+TOLABEL = os.path.expanduser("~/petcam/tolabel")  # near-miss frames awaiting hand labels
 
-LOG = "/home/tom/petcam/detections.log"
+LOG = os.path.expanduser("~/petcam/detections.log")
 LOG_KEEP_DAYS = 14  # rolling window: entries older than this get pruned
 
 
@@ -269,11 +275,25 @@ def motion_region(prev, gray):
     return cv2.boundingRect(mask * 255)
 
 
+def read_still():
+    """the 1fps still as a BGR array, or None.
+    None is the established 'skip this pass' contract (cv2.imread returned None
+    mid-write); a dead or wedged Tom gives the same answer via the timeout.
+    """
+    try:
+        with urllib.request.urlopen(STILL, timeout=STILL_TIMEOUT_S) as r:
+            buf = np.frombuffer(r.read(), np.uint8)
+    except OSError as e:  # URLError/timeout/reset: Tom is down, not us
+        print("still fetch failed:", e, flush=True)
+        return None
+    return cv2.imdecode(buf, cv2.IMREAD_COLOR)
+
+
 def pass_once(net):
     # multi-pass cascade: 1) movement (cheap diff) 2) cat (YOLO, full + zoom on
     # what moved) 3) colour (classify). Heartbeat keeps sleeping cats in play.
     global prev_gray, last_full
-    img = cv2.imread(STILL)  # may fail mid-write; retrying in 5s is the fix
+    img = read_still()
     if img is None:
         return
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -317,7 +337,7 @@ def score_corpus(out_path, img_dir=None):
     class name (None when nothing passes MIN_CONF), conf the top detection
     score, and hue the colour-classifier name for that box. Feeds the Jev
     comparison (scripts/petcam-jev.py) and the /review flag pass. Runs where the
-    model lives (Tom); never writes training or tolabel data.
+    model lives (this box); never writes training or tolabel data.
     """
     img_dir = img_dir or TRAIN_IMG
     deployed_min = MIN_CONF
@@ -437,6 +457,12 @@ def selftest():
     globals().update(
         {"SHOTS": old[0], "TRAIN_IMG": old[1], "TRAIN_LBL": old[2], "LOG": old[3]}
     )
+    # read_still must skip the pass (None) instead of hanging when Tom is gone:
+    # nothing listens on port 9, so this is the refused/no-timeout path.
+    real_still = globals()["STILL"]
+    globals()["STILL"] = "http://127.0.0.1:9/frames/latest.jpg"
+    assert read_still() is None, read_still()
+    globals()["STILL"] = real_still
     print("selftest ok")
 
 
@@ -456,7 +482,7 @@ if __name__ == "__main__":
         score_corpus(out_path, img_dir)
         sys.exit(0)
     if "--capture" in sys.argv:
-        img = cv2.imread(STILL)
+        img = read_still()
         if img is None:
             print("capture failed: no frame", flush=True)
             sys.exit(1)

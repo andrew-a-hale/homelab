@@ -1,0 +1,22 @@
+# /etc/systemd/system/petcam-static.service on Tom.
+# Tom is a camera appliance since 2026-11-08: petcam.sh writes /dev/shm/petcam
+# and this dumb static file server is the only thing that serves it. Tailnet
+# address only, so nothing on the LAN and no plaintext on the internet; Ralph's
+# nginx proxies petcam.andrewahale.com/hls/ here and its detector pulls
+# /frames/latest.jpg from here.
+#
+# python3 -m http.server cannot send Cache-Control, so Ralph's nginx adds
+# no-store on the playlist (hls.js refetches it and must not be cached).
+[Unit]
+Description=Pet Cam static server (/dev/shm/petcam, tailnet only)
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+User=tom
+ExecStart=/usr/bin/python3 -m http.server 8081 --bind 100.77.132.110 --directory /dev/shm/petcam
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
