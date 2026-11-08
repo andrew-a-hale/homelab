@@ -251,6 +251,15 @@ Ralph and the public ingress from outside, appends a summary to
 `skills/homelab-health/SKILL.md` says when to run it and what a failure means;
 `docs/server/complete/health-check-2026-11-08.md` has the decision.
 
-Not on a timer yet — it runs when a human or an agent runs it. It must run from a
-machine that can `ssh` both hosts (`ssh ralph` from Ralph fails host-key
-verification), so the timer belongs on the desktop, not the always-on box.
+Scheduled on **jason** as a systemd **user** timer: `homelab-health.timer`
+(`OnCalendar=*-*-* 08:00:00`, `Persistent=true`) runs
+`homelab-health.service` → `%h/projects/homelab/scripts/homelab-health.sh --quiet`.
+Linger is on for user `andy`, so it fires when nobody is logged in. It cannot live
+on Ralph, the always-on box: the script must `ssh` both hosts and `ssh ralph`
+*from* Ralph fails host-key verification.
+
+```bash
+systemctl --user list-timers homelab-health.timer   # next run
+systemctl --user start homelab-health.service       # run it now
+tail -2 ~/homelab-health.log                        # fresh line proves it
+```

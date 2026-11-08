@@ -83,10 +83,12 @@ grep -v 'tom=ok' ~/homelab-health.log      # every run Tom was unhealthy
    public request crosses one wifi link (Tom→Ralph measured 0.74 MB/s), so
    slow ≠ down. A 302 on petcam is success, not a redirect bug.
 
-## Install the daily run (documented, not installed)
+## The daily run — installed on jason
 
-User unit on any always-on tailnet machine (Jason or Ralph). Adjust `%h` if the
-checkout is not `~/projects/homelab`.
+Live as systemd **user** units on jason (daily 08:00, linger on), not Ralph: the
+script `ssh`es both hosts and `ssh ralph` *from* Ralph fails host-key verification.
+Same recipe for any other always-on tailnet machine; adjust `%h` if the checkout is
+not `~/projects/homelab`.
 
 ```ini
 # ~/.config/systemd/user/homelab-health.service
@@ -95,7 +97,7 @@ Description=Homelab daily health check
 
 [Service]
 Type=oneshot
-ExecStart=%h/projects/homelab/scripts/homelab-health.sh
+ExecStart=%h/projects/homelab/scripts/homelab-health.sh --quiet
 ```
 
 ```ini

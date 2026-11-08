@@ -1,8 +1,8 @@
 # Daily homelab health check (2026-11-08)
 
 **Date:** 2026-11-08
-**Status:** built and merged. **Not yet on a timer** — the check runs when a human
-or an agent runs it. Scheduling is the one open piece.
+**Status:** built, merged and **scheduled** on jason as a systemd user timer
+(`homelab-health.timer`, daily 08:00).
 **Ticket:** `TODO.md` → "Setup a daily task to check if all the systems are working".
 
 Before this the homelab had no monitoring at all: the only signals were a 14-day
@@ -50,10 +50,26 @@ text file and an `&&`-able exit code. Reboot forensics stay in
 again". Thresholds live in one block at the top of the script, each with the reason
 it has that value.
 
+## Done: scheduled on jason (2026-11-08)
+
+Installed as systemd **user** units on jason:
+`~/.config/systemd/user/homelab-health.timer` (`OnCalendar=*-*-* 08:00:00`,
+`Persistent=true`) firing `homelab-health.service`
+(`ExecStart=%h/projects/homelab/scripts/homelab-health.sh --quiet`), with
+`loginctl enable-linger andy` so it runs with nobody logged in. `%h` is the main
+checkout `~/projects/homelab`, not a worktree.
+
+Not on Ralph: the script `ssh`es both hosts and `ssh ralph` *from* Ralph fails
+host-key verification. Jason reaches both over the tailnet and is authenticated.
+
+Proof:
+
+```bash
+systemctl --user list-timers homelab-health.timer      # Mon 2026-11-09 08:00:00 AEST
+systemctl --user start homelab-health.service && tail -2 ~/homelab-health.log
+# 2026-11-08T15:47:38+1000 tom=warn ralph=ok ingress=ok pass=17 warn=1 fail=0
+```
+
 ## Still open
 
-1. **Schedule it.** The skill documents both a systemd user timer (with
-   `loginctl enable-linger`) and a cron line. It has to run from a machine that can
-   `ssh` both hosts — `ssh ralph` *from* Ralph fails host-key verification, so
-   "just put it on the always-on box" does not work as-is.
-2. Extend it if a failure mode is ever missed twice. Not before.
+1. Extend it if a failure mode is ever missed twice. Not before.
