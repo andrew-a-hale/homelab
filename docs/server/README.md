@@ -166,21 +166,23 @@ still live, so check the journal before assuming which one fired:
    file): `docs/server/complete/iwd-wifi-backend-migration-2026-10-29.md`,
    `docs/server/complete/iwd-outage-and-wired-ethernet-2026-10-29.md`; closure
    evidence: `docs/server/complete/wifi-scan-wedge-2026-10-31.md`.
-3. **Unidentified hard hang — the one that is still live.** Fixing the scan
-   wedge did **not** stop the restarts; they got more frequent (19 boots on
-   2026-10-31 alone, gaps of 77 s to 2.5 h). Tom is hard-reset by the systemd
-   hardware watchdog (1 min) with no shutdown message in the journal; about a
-   third of boots show `rcu_preempt detected stalls` on **CPU 3 that never
-   answers the NMI**, the rest die silently. The 2026-10-27 13:42 restart once
-   called "unexplained" has this same signature. Power, thermal, SD and EXT4
-   logs are all clean. **Capture is live as of 2026-10-31** (one deliberate
-   reboot): ramoops/pstore via `dtoverlay=ramoops-pi5`, `panic=15`, and
-   `kernel.panic_on_rcu_stall=1`, so a stall now panics and dumps instead of
-   freezing until the watchdog resets it; `scripts/tom-trace.sh` logs SD
-   and wlan0 counters every 15 s to `/var/log/tom-trace.log`, and
-   `scripts/tom-kmsg.sh` tees `dmesg -w` with microsecond timestamps to
-   `/var/log/tom-kmsg.log` so a silent freeze keeps the kernel's last seconds
-   (journald flushes only every 5 s). Nothing has fired yet. The same reboot took the bootloader from
+3. **RP1 I2C / imx708 camera-path hard hang — identified 2026-11-08, still live.**
+   Fixing the scan wedge did **not** stop the restarts; they got more frequent
+   (19 boots on 2026-10-31 alone, gaps of 77 s to 2.5 h; **87 boots in 7 days** on
+   2026-11-08, ~12/day). The first captured crash dump identifies the trigger:
+   the imx708 stops answering I2C writes on its RP1 bus
+   (`i2c_designware 1f00088000.i2c: controller timed out`, `Failed to write reg
+   0x0342. error = -5`) and **CPU 3 hard-locks** — it never answers the NMI
+   backtrace, `SMP: failed to stop secondary CPUs 3`. About a third of boots show
+   the stall; the rest die silently, hard-reset by the 1 min hardware watchdog
+   with no shutdown message. Power, thermal, SD and EXT4 logs are clean. Since
+   2026-10-31 `panic_on_rcu_stall=1` panics and dumps instead of waiting for the
+   1 min hardware watchdog.
+   SD card, PSU and wifi are **not implicated by that dump** (not proven
+   innocent — they are not in it). Fix order: **reseat the CSI ribbon, replace
+   the ribbon, replace the camera module**, then fall back to a **USB UVC
+   webcam** (removes RP1 I2C from the petcam path). Keep `panic_on_rcu_stall=1`
+   armed — it is what produces the dump. The same reboot took the bootloader from
    2025-05-08 to 2026-09-25 (and moved the RP1 firmware with it). Runbook,
    revert path, and the answer to "how connected is Tom?":
    `docs/server/complete/crash-capture-and-bootloader-2026-10-31.md`. Open work:
