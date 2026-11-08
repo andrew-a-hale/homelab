@@ -2,6 +2,9 @@
 
 **Date:** 2026-11-07
 **Status:** done, verified (unattended reboot proven, SSH working).
+**Superseded in part:** the Guix layer described here was removed on
+[`2026-11-08`](no-guix-2026-11-08.md) — Ralph is pacman only. Keep this file for
+the Arch/LUKS/TPM2 half.
 **Ticket:** none — greenfield; tracked in [`../../../TODO.md`](../../../TODO.md).
 
 New mini PC arrived and became Ralph, the always-on server. This records the

@@ -31,7 +31,7 @@ Jason (Desktop) does YOLO model fine tuning for the Petcam.
 
 Rose (Laptop) uses jellyfin with TV in place of the Google Streamer TV solution temporarily.
 
-Ralph (Dell OptiPlex 7070 Micro, Arch + Guix) is the always-on server and the public gateway: Jellyfin, qBittorrent, DHT Sensor, fail2ban, the media library, the website, and the only Cloudflare tunnel.
+Ralph (Dell OptiPlex 7070 Micro, Arch) is the always-on server and the public gateway: Jellyfin, qBittorrent, DHT Sensor, fail2ban, the media library, the website, and the only Cloudflare tunnel.
 
 ## Detailed Todos and Tickets
 

@@ -1,15 +1,15 @@
 # Ralph
 
 The always-on server. Dell OptiPlex 7070 Micro (i5-9500T, 16GB, 256GB NVMe),
-headless, reached over SSH and nothing else. Arch base + Guix for packages.
+headless, reached over SSH and nothing else. Arch base, pacman for everything.
 
 
 ## Shape
 
 | Layer | What | Why |
 |---|---|---|
-| Base OS | Arch, `linux-lts` | boring kernel, pacman only for the substrate |
-| Packages | Guix (1.5.0, daemon as systemd service) | declarative, rollback-able, per-user generations |
+| Base OS | Arch, `linux-lts` | boring kernel, systemd-boot, one package manager |
+| Packages | pacman only (Guix removed 2026-11-08, [why](complete/no-guix-2026-11-08.md)) | it was carrying 1GB and zero packages |
 | Disk | LUKS2 → btrfs subvols `@ @home @log @pkg @snapshots` | snapshots before updates |
 | Boot | systemd-boot, ESP at `/boot`, TPM2 PCR 7 auto-unlock | encrypted but still boots unattended |
 | Network | iwd + systemd-networkd, DHCP, wifi | wired when available (see below) |
@@ -25,7 +25,7 @@ headless, reached over SSH and nothing else. Arch base + Guix for packages.
 - **What runs here (all enabled, `Restart=always` where relevant):**
   `andrewhale-web`, `nginx`, `cloudflared`, `jellyfin`, `dht`, `petcam`,
   `petcam-detect`, `qbittorrent-nox@qbittorrent`, `fail2ban`, `sshd`,
-  `guix-daemon`, `tailscaled`, `wg-quick@proton0`.
+  `tailscaled`, `wg-quick@proton0`.
 - **Firewall:** ufw, per service — `22`, `80`, `8096` on the tailnet; `80` and
   `8096` from the LAN; `41641/udp`. LAN `:22` is closed, so admin SSH is
   tailnet-only (`sudo ufw status verbose`).

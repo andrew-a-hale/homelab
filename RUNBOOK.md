@@ -23,8 +23,9 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
    Jellyfin config references that path.
 3. `pacman -S jellyfin-server jellyfin-web jellyfin-ffmpeg nginx cloudflared
    qbittorrent-nox tailscale wireguard-tools ufw go`
-   (Guix is an optional layer on top; nothing in the stack needs it — on the
-   live box `/gnu/store` holds only `guix` and `nss-certs`.)
+   There is **no Guix** on Ralph — it was installed on 2026-11-07 and removed on
+   2026-11-08 ([why](docs/ralph/complete/no-guix-2026-11-08.md)). Everything
+   comes from pacman.
 
 ### 2. Code
 
