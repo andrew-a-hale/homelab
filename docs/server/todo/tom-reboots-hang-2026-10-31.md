@@ -1,7 +1,9 @@
-# Tom: unexplained hard hangs / restarts (2026-10-31)
+# Tom: hard hangs / restarts (2026-10-31)
 
 **Date opened:** 2026-10-31
-**Status:** open — cause unidentified, ~1 restart/hour.
+**Status:** open — **cause identified 2026-11-08 from the first captured crash dump**: a
+hard lockup on **CPU 3 in the RP1 I2C / imx708 camera path**. Not fixed; ~12 resets/day
+(87 boots in 7 days). See [the dump section](#2026-11-08--cause-identified-from-the-first-captured-dump).
 **Predecessors:** [`../complete/wifi-scan-wedge-2026-10-31.md`](../complete/wifi-scan-wedge-2026-10-31.md)
 (the scan wedge, now fixed), [`../complete/wifi-scan-storm-watchdog-2026-10-27.md`](../complete/wifi-scan-storm-watchdog-2026-10-27.md),
 and `../../petcam/complete/camera-i2c-rcu-stall-reboot-2026-10-25.md`.
@@ -45,10 +47,12 @@ Measured on 2026-10-31 (see the closure doc for the full table):
   tree reserved no ramoops region, and `CONFIG_PANIC_TIMEOUT=0` meant a panic
   hung instead of rebooting. **Fixed on 2026-10-31** — see
   [`../complete/crash-capture-and-bootloader-2026-10-31.md`](../complete/crash-capture-and-bootloader-2026-10-31.md).
-  The next hang should now leave a dump and/or a pre-crash trace; nothing has
-  fired yet.
+  It has fired since: the sysrq test on 2026-11-01, the stall panic on 2026-11-02,
+  and the dump below on 2026-11-08.
 
-Working hypothesis, **not proven**: a bus-level hang (SDIO / RP1 / SD-card I/O)
+Working hypothesis, **not proven — and superseded on 2026-11-08** by the captured
+dump below (same shape: one CPU survives interrupts and RCU notices it; the
+trigger is the camera path, not SDIO): a bus-level hang (SDIO / RP1 / SD-card I/O)
 wedges one CPU in a way that survives interrupts, RCU notices, the watchdog
 resets the board, and the last seconds are lost because nothing is persisted
 between the freeze and the reset. The strongest clue is that the wedged core is
@@ -57,7 +61,93 @@ consistent core suggests something pinned or repeatedly scheduled there (check
 `/proc/interrupts` affinities and `taskset`/`irqbalance` state next). It is not
 evidence of the *trigger*, which is what is missing.
 
+## 2026-11-08 — cause identified from the first captured dump
+
+The pstore capture armed on 2026-10-31 finally paid off: a crash on **2026-11-08**
+(the boot that dumped at **14:25**) left a dump that identifies the *trigger*, not
+just the aftermath. Read read-only from `/var/lib/systemd/pstore/dmesg-ramoops-0`
+on Tom — 27203 bytes, `Panic#1 Part1`:
+
+```text
+[    7.718306] rp1-cfe 1f00110000.csi: Using a link rate of 900 Mbps
+              <- and then NOTHING until 156.873
+[  156.873184] rcu: INFO: rcu_preempt detected stalls on CPUs/tasks:
+[  156.873196] rcu: 	3-...0: (177 ticks this GP) idle=0d5c/1/0x4000000000000000 softirq=3801/3803 fqs=2340
+[  156.873202] rcu: 	(detected by 0, t=5252 jiffies, g=4289, q=825 ncpus=4)
+[  156.873206] Sending NMI from CPU 0 to CPUs 3:
+              <- no backtrace ever follows
+[  162.867159] i2c_designware 1f00088000.i2c: controller timed out
+[  162.867183] imx708 10-001a: imx708_stop_streaming failed to set stream
+[  163.887465] i2c_designware 1f00088000.i2c: controller timed out
+[  163.887484] imx708 10-001a: Failed to write reg 0x0342. error = -5
+[  163.887490] imx708 10-001a: imx708_start_streaming failed to set mode
+[  163.887495] rp1-cfe 1f00110000.csi: stream on failed in subdev
+              (that i2c-timeout / reg-write -5 / start_streaming triplet repeats
+               ~1/s through 164.911 and 165.936)
+[  166.873646] rcu: rcu_preempt kthread timer wakeup didn't happen for 2501 jiffies!
+[  166.873650] rcu: 	Possible timer handling issue on cpu=0 timer-softirq=3104
+[  166.873651] rcu: rcu_preempt kthread starved for 2502 jiffies!
+[  166.914225]  panic_on_rcu_stall+0x54/0x60
+[  168.048200] SMP: failed to stop secondary CPUs 3
+```
+
+The tail after `panic_on_rcu_stall` is our own knob panicking the box, as armed.
+
+What it establishes:
+
+- **Nothing is logged between 7.7 s and 156.9 s**, so CPU 3 wedged silently, and
+  the stall had already been running `t=5252 jiffies` (~21 s at 250 Hz) before it
+  was reported — the wedge began **~135 s into boot**.
+- **CPU 3 never answers the NMI backtrace**, and `SMP: failed to stop secondary
+  CPUs 3` at the end says it was still dead. That is a **hard lockup on CPU 3**,
+  not a busy CPU.
+- **The imx708 / rp1-cfe camera path is the thing failing** — the sensor sits on
+  the RP1 I2C bus `1f00088000.i2c` (`i2c@88000`), which stops acknowledging
+  register writes (`error = -5`) while `rp1-cfe` keeps retrying the stream. The
+  RCU stall and the panic are **downstream** of that.
+- **`panic_on_rcu_stall=1` is doing exactly what it was armed for** — a fast
+  reboot plus a dump instead of a silent ~1 min hardware-watchdog reset. Keep it.
+- **Consistent with
+  [`../../petcam/complete/camera-i2c-rcu-stall-reboot-2026-10-25.md`](../../petcam/complete/camera-i2c-rcu-stall-reboot-2026-10-25.md):**
+  every stall ever seen is CPU 3, and the bus that fails is the one the imx708
+  sits on. The 2026-10-25 note called the camera the trigger; this is the proof.
+- **Frequency, measured 2026-11-08:** 87 boots in 7 days (~12/day)
+  (`journalctl --list-boots --since "7 days ago" | wc -l`). **The crash is not
+  fixed, it is explained.**
+- **pstore is 64 KiB ramoops** (`0x10000@0xb000000`) and keeps only **one** dump,
+  overwritten each boot — read it promptly, archive it, then clear it.
+
+### Demoted, not cleared
+
+**SD card, PSU and wifi are not implicated by this dump.** Nothing in it reports
+an `mmc0`/`mmcblk0` **error** (the boot-time probe lines are their only
+appearance), nothing power- or thermal-related, and no `brcmf`/SDIO failure — the
+failing subsystem is the RP1 I2C/CSI camera path.
+
+That is **not** proof of innocence: a dump holds only what the kernel logged in
+its last ~160 s, and a path that fails silently leaves no line in it. They stay
+as cheap hardware checks after the camera path is dealt with, not as suspects.
+
 ## Open work
+
+### Next, in order — the dump decides the order now
+
+1. **Physical: the camera path.** Reseat the CSI ribbon at **both** ends, then
+   replace the ribbon, then replace the camera module. Cheapest first. This is
+   the shape of a connector/ribbon fault — the link trains (`Using a link rate of
+   900 Mbps`) and then the sensor stops answering I2C writes. Only the owner can
+   do this; nothing remote can.
+2. **Fallback if it persists: a USB UVC webcam.** It removes RP1 I2C and the CSI
+   path from the petcam entirely (a plain `/dev/video*` on the USB bus), which is
+   the only option here that stops depending on the failing hardware rather than
+   trying to stabilise it. At 720p@1 fps the Pi 5 has ample headroom. Plan the
+   `petcam.sh`/`petcam-detect.py` change when it is actually ordered — not before.
+3. **Keep `kernel.panic_on_rcu_stall=1` armed.** It is what produced this dump;
+   turning it off to "reduce reboots" would restore the silent ~1 min watchdog
+   reset and throw the instrument away. A dump must still be read promptly (one
+   slot, overwritten every boot).
+
+### Carried over from before the dump — still true, now lower priority
 
 1. ~~Capture the next hang before theorising further.~~ **Done 2026-10-31** in
    one deliberate reboot — `dtoverlay=ramoops-pi5`, `panic=15`,
@@ -83,11 +173,12 @@ evidence of the *trigger*, which is what is missing.
    is empty on this board, and the DT node dies with the boot. The kmsg
    timestamps are the primary evidence for the three open candidates.
 
-   **Next action is to wait for a hang and read the dump**, not to change
-   anything. Still worth doing separately: `boot-reason-log.service` only
+   **The dump has been read — see the 2026-11-08 section above.** Still worth doing
+   separately: `boot-reason-log.service` only
    logged 16 of 19 boots on 2026-10-31 (it runs `After=multi-user.target` and
    dies in the crash loop), so it under-reports the reboot count.
-2. **PSU verification** (carried over). Official 5 V/5 A supply and no
+2. **PSU verification** (carried over, **demoted by the 2026-11-08 dump** — nothing
+   power-related appears in it). Official 5 V/5 A supply and no
    thin/cheap USB-C cable. `tom-health` shows `throttled=0x0` and `EXT5V`
    ≈ 5.04–5.20 V, but those flags clear on power cycle so they cannot prove the
    PSU. Still worth physically confirming the supply and cable.
@@ -109,7 +200,8 @@ evidence of the *trigger*, which is what is missing.
    image in the rpt archive, so there is nothing to upgrade to. The
    `firmware-brcm80211` blob for the 43455 has not changed since 2024. No
    brcmfmac scan/`-110` fix has landed. Re-check when a new rpt kernel appears.
-6. **SD card is the cheapest hardware test.** Rootfs is `/dev/mmcblk0p2` on an
+6. **SD card is the cheapest hardware test** (**demoted by the 2026-11-08 dump** —
+   no `mmc0`/`mmcblk0` *error* appears in it; do this after the camera path). Rootfs is `/dev/mmcblk0p2` on an
    unbranded 29.5 GiB SDR104 card (`manfid 0x0000ad`, OEM `0x4c53`, dated
    03/2025, `quirks 0x40000000`). It logs no errors, but a card that stalls
    without logging is a classic cause of exactly this freeze-then-watchdog
@@ -1809,6 +1901,12 @@ weakens the "guard reload causes the wedge" idea for the big one — the young-b
 correlation stays a lead, not a cause.
 
 ### Is there a solution? Honest answer: not a fix, but a decision
+
+> **Superseded 2026-11-08.** The 11-08 dump puts the failure in the RP1 I2C /
+imx708 camera path, not the BCM43455 SDIO path, so the upstream wifi reports
+below are the wrong trail for the *trigger* (they were right about the stall
+shape). Kept as the record of what was believed on 2026-11-03; see the 2026-11-08
+section for what replaced it.
 
 **The fault is in the Broadcom BCM43455 SDIO path, and it is not ours to fix in
 userspace.** Upstream reports match Tom's signature closely:

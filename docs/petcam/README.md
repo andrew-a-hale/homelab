@@ -113,12 +113,22 @@ Then kill each process once: systemd revives the app, cron revives capture and
   be pushed back into `/label` for a fresh hand label (R or the button).
 
 ## Stability note
-The 24/7 `rpicam-vid` pipeline has been identified as the trigger for Tom's
-random watchdog reboots: an `i2c_designware ... controller timed out` on the
-imx708 bus stalls RCU and the hardware watchdog resets the Pi. See
-`docs/petcam/complete/camera-i2c-rcu-stall-reboot-2026-10-25.md`. Mitigations
-in priority order: (1) reseat the camera ribbon + verify PSU, (2) lower
-`WIDTH/HEIGHT/FPS` in `petcam.sh`, (3) journald alert on i2c/RCU messages.
+**Proven 2026-11-08 by a kernel dump.** The 24/7 `rpicam-vid` pipeline is the
+trigger for Tom's random watchdog reboots: the imx708 stops acknowledging writes
+on its RP1 I2C bus (`i2c_designware ... controller timed out`, `Failed to write
+reg 0x0342. error = -5`), **CPU 3 hard-locks** — it never answers the NMI
+backtrace and `SMP: failed to stop secondary CPUs 3` follows — and
+`panic_on_rcu_stall=1` turns that into a panic + pstore dump instead of a silent
+watchdog reset. Evidence, frequency (87 boots in 7 days) and the demotions (SD
+card, PSU, wifi are not implicated by the dump):
+[`../server/todo/tom-reboots-hang-2026-10-31.md`](../server/todo/tom-reboots-hang-2026-10-31.md).
+Earlier diagnosis:
+[`complete/camera-i2c-rcu-stall-reboot-2026-10-25.md`](complete/camera-i2c-rcu-stall-reboot-2026-10-25.md).
+
+**Fix order:** (1) reseat the CSI ribbon at both ends, (2) replace the ribbon,
+(3) replace the camera module, (4) if it persists, switch to a **USB UVC
+webcam**, which removes RP1 I2C from the petcam path entirely. Keep
+`kernel.panic_on_rcu_stall=1` armed — it is what produces the dump.
 
 Action taken 2026-10-25: capture/stream framerate reduced from 10 to 1 fps
 (`FPS=1`, `STREAM_FPS=1`) in `scripts/petcam.sh` (run in place from the repo);
@@ -127,8 +137,10 @@ pipeline restarted. Detection unaffected (stills remain 1 fps).
 Reboots continued, so follow-up work and the durable instrumentation
 (journald 5 s sync, `tom-health` cron sample, persistent
 `~/petcam/logs/{rpicam,ffmpeg}.log`, supervisor `$$` fix + flap backoff) are
-documented in `todo/camera-reboots-2026-10-26.md`. Remaining fix is physical
-(ribbon reseat / PSU); UVC webcam is the fallback if it persists.
+documented in
+[`complete/camera-reboots-2026-10-27.md`](complete/camera-reboots-2026-10-27.md).
+Remaining fix is physical (ribbon reseat/replace, then the module); a UVC webcam
+is the fallback if it persists.
 
 Diagnose a new reboot with:
 
