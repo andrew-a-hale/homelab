@@ -2,7 +2,6 @@
 
 **Date:** 2026-11-07
 **Status:** done, verified from the public internet. Reversible.
-**Ticket:** [`../todo/public-ingress-2026-11-07.md`](../todo/public-ingress-2026-11-07.md)
 
 Ralph is now the gateway. Cloudflare terminates into Ralph, Ralph serves the
 website itself, Jellyfin itself, and forwards only petcam to Tom.
