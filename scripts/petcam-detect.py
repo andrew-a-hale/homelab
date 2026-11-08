@@ -25,7 +25,9 @@ import numpy as np
 
 STILL = "/dev/shm/petcam/frames/latest.jpg"
 SHOTS = os.path.expanduser("~/petcam/shots")
-MODEL = os.path.expanduser("~/petcam/model/yolov8n.onnx")
+MODEL = os.environ.get(
+    "PETCAM_MODEL", os.path.expanduser("~/petcam/model/yolov8n.onnx")
+)  # env override so --score-corpus can run off-Tom with a copied model
 
 HARVEST_SAMPLING_RATE = 0.25
 
@@ -183,8 +185,11 @@ last_prune = 0.0
 
 
 def log_raw(line):
-    """append one timestamped line; rolling LOG_KEEP_DAYS window, pruned daily"""
+    """append one timestamped line; rolling LOG_KEEP_DAYS window, pruned daily.
+    Off-host runs (e.g. --score-corpus on a laptop) skip logging silently."""
     global last_prune
+    if not os.path.isdir(os.path.dirname(LOG)):
+        return
     with open(LOG, "a") as f:
         f.write(time.strftime("%Y-%m-%d %H:%M:%S") + " " + line + "\n")
     now = time.time()
