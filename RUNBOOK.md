@@ -22,7 +22,11 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
    `nofail`. Keep the symlink `ln -s /srv/media /mnt/storage/media` — the
    Jellyfin config references that path.
 3. `pacman -S jellyfin-server jellyfin-web jellyfin-ffmpeg nginx cloudflared
-   qbittorrent-nox tailscale wireguard-tools ufw go`
+   qbittorrent-nox nzbget par2cmdline 7zip unrar tailscale wireguard-tools ufw go`
+   `nzbget`'s package ships no sysusers entry, so create the user its own unit
+   expects first: `useradd --system --user-group --home-dir /var/lib/nzbget
+   --shell /usr/bin/nologin nzbget` (systemctl will fail with `invalid user`
+   otherwise).
    There is **no Guix** on Ralph — it was installed on 2026-11-07 and removed on
    2026-11-08 ([why](docs/ralph/complete/no-guix-2026-11-08.md)). Everything
    comes from pacman.
@@ -36,7 +40,7 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
    listens `127.0.0.1:8080`).
 3. nginx: copy `docs/ralph/nginx-ralph.conf` to `/etc/nginx/conf.d/`. It
    carries the upgrade map, the `ralph` default server (`/jf/` → 8096, `/bt/` →
-   8081 with basic auth, `/static/dht.json` → `/srv/dht/dht.json`, rest →
+   8081, `/nzb/` → 6789, `/static/dht.json` → `/srv/dht/dht.json`, rest →
    127.0.0.1:8080) and the `petcam.andrewahale.com` server as one file; the live
    box splits the same content into `00-upgrade-map.conf`, `ralph.conf` and
    `petcam.conf`. The petcam server needs the petcam app on `127.0.0.1:8082`
@@ -75,12 +79,23 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
   for `proton0`. Bind the network interface to `proton0` in its settings
   (`Session\Interface=proton0`; leak protection). The WebUI stays loopback with
   its own auth off; `/bt/` gets basic auth from nginx (`/etc/nginx/htpasswd`,
-  user `andy`, password from the pass/Proton Pass entry — see the secrets table)
+  user `andy`, password from `pass show homelab/qbittorrent` — see the secrets table)
   **and** an `if ($http_cf_ray) { return 404; }` guard, because `/bt/` sits on the
   default server that the tunnel also routes to. Without it, the WebUI is public
   behind basic auth: `curl https://andrewahale.com/bt/` → 401 means the guard is
   missing; it must be 404.
   Torrent state is not preserved either: re-add what you still want.
+- **NZBGet** — `nzbget.service` (Arch package; runs as the `nzbget` system user,
+  config `/var/lib/nzbget/nzbget.conf`, mode 600, **not** in this repo — it holds
+  the provider password). Listens `127.0.0.1:6789` only; `/nzb/` gets the same
+  basic auth + `CF-Ray` guard as `/bt/`. Downloads land in
+  `/srv/media/downloads`, completed jobs go straight to `/srv/media/movies`,
+  `/srv/media/tv` (categories `Movies`, `Series`; `AppendCategoryDir=no`). Needs
+  `par2cmdline`, `unrar`, `7zip` for verify/unpack. `Server1.*` stays
+  `Active=no` until a provider account exists — with no server configured it
+  logs `No servers are configured` and sits idle, which is harmless. Provider
+  credentials live in `pass` (`homelab/xsnews`) and are pasted into `Server1.Host/.Username/
+  .Password` (TLS on port 563).
 - **Proton VPN** — `wg-quick@proton0` with `/etc/wireguard/proton0.conf`
   (secret, see below), enabled at boot, plus `proton-guard.timer` (every 5 min)
   running `proton-guard.service` → `install -m755 scripts/proton-guard.sh
@@ -165,7 +180,8 @@ Rebuild detail and the rollback path: `docs/petcam/complete/tom-camera-appliance
 | Tailscale node keys | `/var/lib/tailscale` | `tailscale up` + approve in the admin console (or auth key) |
 | GitHub push key | `~/.ssh/id_ed25519` on each host that clones (ralph, jason, tom) | `ssh-keygen` + add pubkey to the GitHub account |
 | Jellyfin users | `/var/lib/jellyfin` | first-run wizard / admin reset — passwords are gone, that is the deal |
-| qBittorrent login + state | `/etc/nginx/htpasswd`, `/var/lib/qbittorrent` | rotate with `openssl passwd -apr1 -stdin` (htpasswd is not installed on Ralph), store the value in Proton Pass, `systemctl reload nginx`; re-add torrents |
+| qBittorrent login + state | `/etc/nginx/htpasswd`, `/var/lib/qbittorrent` | user `andy`, password from `pass show homelab/qbittorrent`; rotate with `openssl passwd -apr1 -stdin` (htpasswd is not installed on Ralph), update the `pass` entry, `systemctl reload nginx`; re-add torrents |
+| NZBGet config + provider login | `/var/lib/nzbget/nzbget.conf` (600 `nzbget:nzbget`), account at xsnews.com | login in `pass`: `pass show homelab/xsnews/username` / `..password`; paste into `Server1.*` and `systemctl restart nzbget`. The WebUI has no password of its own — `AuthorizedIP=127.0.0.1` means only nginx reaches it, and `/nzb/` carries the same basic auth as `/bt/` |
 
 | SSH host keys | `/etc/ssh` | regenerated on install; refresh known_hosts |
 | Router admin | sticker / ISP account | physical |
@@ -174,7 +190,8 @@ Tom has no qBittorrent at all since 2026-11-08: binary, unit and nginx removed
 (`qbittorrent-nox@tom` is `not-found`).
 
 Not a secret but with **no second copy**: the 62G of media on `/srv/media`.
-Re-rip or re-torrent if the drive dies. Say the word if that changes.
+Re-rip, re-torrent or re-grab from usenet if the drive dies. Say the word if that
+changes.
 
 ## Deliberate non-goals (decided 2026-11-07)
 

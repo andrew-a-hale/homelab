@@ -53,7 +53,7 @@ SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8)
 # Ingress hostnames that must answer (docs/ralph/cloudflared-config.yaml).
 SITES=(andrewahale.com petcam.andrewahale.com jellyfin.andrewahale.com)
 # Units that must be active on Ralph (RUNBOOK.md §Ralph / docs/ralph/README.md).
-RALPH_UNITS=(nginx cloudflared jellyfin 'qbittorrent-nox@qbittorrent')
+RALPH_UNITS=(nginx cloudflared jellyfin 'qbittorrent-nox@qbittorrent' nzbget)
 
 PASS_N=0 WARN_N=0 FAIL_N=0
 HOST="" HOST_WARN=0 HOST_FAIL=0 HOST_HEADER=0
@@ -160,7 +160,7 @@ REMOTE
 probe_ralph() {
   ssh "${SSH_OPTS[@]}" "$RALPH_HOST" 'bash -s' <<'REMOTE'
 printf 'uptime=%s\n' "$(uptime -p | sed 's/^up //')"
-for u in nginx cloudflared jellyfin qbittorrent-nox@qbittorrent; do
+for u in nginx cloudflared jellyfin qbittorrent-nox@qbittorrent nzbget; do
   printf 'svc=%s:%s\n' "$u" "$(systemctl is-active "$u" 2>/dev/null)"
 done
 printf 'proton0=%s\n' "$(ip link show proton0 >/dev/null 2>&1 && echo up || echo down)"

@@ -13,6 +13,7 @@ Jellyfin + qBittorrent on **Ralph**, the always-on server. Verified
 | Library path in Jellyfin | `/mnt/storage/media/...` | `/mnt/storage/media` is a **symlink to `/srv/media`** — keep it, Jellyfin's config references that path |
 | Drive mount | `/etc/fstab`, `nofail,x-systemd.device-timeout=15` | plus `jellyfin.service.d/` with `RequiresMountsFor=/srv/media`, so an unplugged drive stops Jellyfin instead of serving empty libraries |
 | qBittorrent 5.3.0 | **Ralph**, `qbittorrent-nox@qbittorrent` | WebUI `127.0.0.1:8081`, `Session\Interface=proton0` |
+| NZBGet 26.3 | **Ralph**, `nzbget.service` | WebUI `127.0.0.1:6789`, `/srv/media/downloads`, idle until `Server1` has a provider |
 | Download path | `/srv/media/movies`, `/srv/media/tv` | Jellyfin scans on start and ~30 min |
 
 ## Access
@@ -21,7 +22,8 @@ Jellyfin + qBittorrent on **Ralph**, the always-on server. Verified
 |---|---|---|
 | LAN | `http://ralph/jf` | Jellyfin login |
 | Internet | `https://jellyfin.andrewahale.com` | Jellyfin login (no Cloudflare Access — see `../security/complete/public-ingress-2026-11-08.md`) |
-| LAN (qBittorrent) | `http://ralph/bt/` | nginx basic auth; not reachable through the tunnel (`/bt/` returns 404 for tunnel traffic); the password is in **Proton Pass** (human credentials do not live in this repo or in `pass`). fail2ban bans a LAN client after 5 bad attempts (it cannot ban internet clients: `/bt/` is not tunnelled, so this is fine) |
+| LAN (qBittorrent) | `http://ralph/bt/` | nginx basic auth; not reachable through the tunnel (`/bt/` returns 404 for tunnel traffic); the password is `pass show homelab/qbittorrent` (never in this repo). fail2ban bans a LAN client after 5 bad attempts (it cannot ban internet clients: `/bt/` is not tunnelled, so this is fine) |
+| LAN (NZBGet) | `http://ralph/nzb/` | same basic auth file and the same `CF-Ray` 404 guard as `/bt/`, so the existing `nginx-http-auth` fail2ban jail covers it. NZBGet asks for nothing itself: `AuthorizedIP=127.0.0.1` means only nginx can reach it |
 
 The tunnel ingress points `jellyfin.andrewahale.com` **straight at
 `127.0.0.1:8096`**, not through nginx, because `BaseUrl=/jf` already carries the
@@ -39,6 +41,27 @@ If qBittorrent logs "configured network interface is invalid", re-point
 `/var/lib/qbittorrent/.config/qBittorrent/qBittorrent.conf` at `proton0` /
 `10.2.0.2`.
 
+## Usenet (parallel, 2026-11-09)
+
+NZBGet runs **alongside** qBittorrent, not instead of it: torrents keep the
+library current for fresh releases, usenet covers the back catalogue that has no
+seeders left. Why it exists at all, what it costs, and the free-indexer question:
+[`todo/usenet-vs-torrents-2026-11-09.md`](todo/usenet-vs-torrents-2026-11-09.md);
+the install decisions: [`complete/nzbget-parallel-2026-11-09.md`](complete/nzbget-parallel-2026-11-09.md).
+
+| | |
+|---|---|
+| Unit | `nzbget.service`, runs as the `nzbget` system user (created by hand — the package ships no sysusers entry) |
+| Config | `/var/lib/nzbget/nzbget.conf`, 600 `nzbget:nzbget`, **not in this repo** (provider password) |
+| WebUI | `127.0.0.1:6789`, `AuthorizedIP=127.0.0.1`; nginx `/nzb/` is the only way in |
+| Paths | `MainDir=/srv/media/downloads` (on the same filesystem as the library, so a finished job is a `rename`, not a copy), categories `Movies` → `/srv/media/movies`, `Series` → `/srv/media/tv`, `AppendCategoryDir=no` |
+| Unpack/verify | `par2cmdline`, `unrar`, `7zip` from `extra`; `ArticleCache=200`, `WriteBuffer=1024` |
+| Search | `scripts/nzb-dl.sh` — `search "query"` (binsearch, `--nzbking` fallback), `add <id> Series|Movies`, `status`, `history`, `remove <job>`. Wraps the same free indexers (`binsearch.info`, `nzbking.com`; `nzbindex.com` is client-rendered and useless for `?q=`) and pushes through jsonrpc over `ssh ralph`, because the WebUI is loopback-only. Edge cases and the manual fallback: `~/.pi/agent/skills/usenet-download/SKILL.md` and [`complete/nzb-automation-2026-11-09.md`](complete/nzb-automation-2026-11-09.md) |
+| Provider | **XS News**, configured 2026-11-09: `Server1.Host=reader.xsnews.nl`, `Port=563`, `Encryption=yes`, `Connections=20`, `Level=0`, `Active=yes`. Account login in `pass` (`homelab/xsnews/username`, `homelab/xsnews/password`) and the config copy is `/var/lib/nzbget/nzbget.conf` (600, `nzbget:nzbget`). Connections verified by NZBGet's article-availability check, not just by a TCP connect |
+
+No VPN involvement, and nothing to bind: the protocol is TLS to one paid server,
+so `proton0` stays qBittorrent's problem only.
+
 ## TV
 
 Laptop → HDMI → browser → `http://ralph/jf` → play, until a Google TV Streamer
@@ -48,12 +71,23 @@ or Shield arrives (`TODO.md`). The TV's own DLNA path is a dead end — see
 ## Verify
 
 ```bash
-ssh ralph 'systemctl is-active jellyfin qbittorrent-nox@qbittorrent fail2ban'
+ssh ralph 'systemctl is-active jellyfin qbittorrent-nox@qbittorrent fail2ban nzbget'
+ssh ralph 'sudo ss -ltnp | grep -E "6789|8081"'        # both 127.0.0.1 only
+curl -s -o /dev/null -w '%{http_code}\n' http://ralph/nzb/   # 401 unauth, 200 with the htpasswd user
 ssh ralph 'findmnt -T /srv/media -o SOURCE,FSTYPE,SIZE,USED,AVAIL'   # /dev/sda1 ext4
 curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: jellyfin.andrewahale.com' http://127.0.0.1:8096/jf/web/
 curl -sI https://jellyfin.andrewahale.com/ | head -1                # 302 -> /jf/web/
 ssh ralph 'sudo journalctl -u qbittorrent-nox@qbittorrent -n 20 | grep -i interface'
 ```
+
+## Automation (2026-11-09)
+
+`scripts/nzb-dl.sh` is the whole chain in one file: search a free indexer, fetch
+that post's NZB, base64 it into an NZBGet `append` over `ssh ralph` (the jsonrpc
+quirks are all in the script), then `status` / `history` / `remove`. First real
+use: the Gurren Lagann series batch (`Series`) and its two films as one pack
+(`Movies`), 23 GB, ~4 MB/s. Says the details:
+[`complete/nzb-automation-2026-11-09.md`](complete/nzb-automation-2026-11-09.md).
 
 ## Ceilings
 
@@ -67,6 +101,13 @@ ssh ralph 'sudo journalctl -u qbittorrent-nox@qbittorrent -n 20 | grep -i interf
 - **Manual patching.** Arch, no update timer (`../security/todo/`). Jellyfin
   12.4 is current as of 2026-11-08, and it is the box's only internet-facing
   authenticated app.
+- **Usenet costs money and dies quietly.** An expired provider or indexer looks
+  identical to "this release has no sources". Takedowns are the everyday case:
+  the very first test post (Twin Peaks S01E01, 1080p x265) came back **89.8%
+  available** and NZBGet's health gate (`HealthCheck=park`, hidden critical
+  threshold ~89.9%) parked it before a single byte was downloaded. If a post
+  refuses to start, read the log for the health line before assuming a broken
+  config — `HealthCheck=none` forces it through.
 
 History: `../ralph/complete/media-and-jellyfin-2026-11-07.md` (move off Tom),
 `complete/` here for the NFS era and the VPN/interface incidents.

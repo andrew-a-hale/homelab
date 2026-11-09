@@ -1,4 +1,10 @@
-# qBittorrent login is andy/pancake; Tom's copy is gone (2026-11-08)
+# qBittorrent login is andy; Tom's copy is gone (2026-11-08, creds updated 2026-11-09)
+
+**The password in this file is stale.** `/etc/nginx/htpasswd` still has the
+single `andy` entry, but the value was rotated after this was written
+(`andy:pancake` now returns 401). Read it from
+`pass show homelab/qbittorrent` — never paste it back into the repo, which is
+how it rotted in the first place. One credential covers `/bt/` and `/nzb/`.
 
 The `/bt/` basic-auth user on Ralph was `tom`/`pancake` — a leftover from the
 Pi era. Tom stopped running qBittorrent when the stack moved to Ralph
@@ -6,10 +12,12 @@ Pi era. Tom stopped running qBittorrent when the stack moved to Ralph
 
 ## What changed
 
-- `/etc/nginx/htpasswd` on Ralph rewritten with a single entry:
-  `andy`/`pancake` (`openssl passwd -apr1`, `htpasswd` is not installed on
-  Arch). `tom` removed. `nginx -t` + reload; verified `andy:pancake` → 200,
-  anonymous → 401, `tom:pancake` → 401.
+- `/etc/nginx/htpasswd` on Ralph rewritten with a single entry: `andy`
+  (`openssl passwd -apr1`, `htpasswd` is not installed on Arch). `tom` removed.
+  `nginx -t` + reload; verified `andy` → 200, anonymous → 401, `tom` → 401.
+  The password at the time was `pancake`; it has since been rotated and lives
+  in `pass show homelab/qbittorrent` (verified 2026-11-09 against `/nzb/` → 200,
+  which uses the same file).
 - Docs corrected everywhere they still pointed at `http://tom/bt`, `tom/pancake`
   or `andy`/`homelab`: `RUNBOOK.md`, `TODO.md`, `docs/media/README.md`,
   `docs/server/README.md`, `docs/ralph/README.md`,
@@ -21,11 +29,14 @@ Pi era. Tom stopped running qBittorrent when the stack moved to Ralph
 `qbittorrent-nox@tom` → `inactive`, unit `not-found`, no `qbittorrent-nox`
 binary, nginx inactive, no `/etc/nginx/htpasswd`. Nothing left to retire.
 
-## Why andy/pancake
+## Why andy, and why the password moved
 
 One identity for the house's own services. `pancake` was already the shared
-media password; the previous `andy`/`homelab` in the media README had drifted
-from reality, which is exactly how a doc rots.
+media password at the time; the previous `andy`/`homelab` in the media README had
+drifted from reality, which is exactly how a doc rots. The password then rotted
+the same way — recorded here as plaintext, rotated later without an update — so
+as of 2026-11-09 the rule is: **the secret lives in `pass`, the doc says where,
+nothing restates it.**
 
 ## Notes
 

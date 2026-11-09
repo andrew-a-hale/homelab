@@ -2,7 +2,7 @@
 
 ## Home Lab
 
-- [ ] Investigate usenet instead of torrents
+- [ ] Investigate usenet instead of torrents — investigated 2026-11-09; NZBGet now runs next to qBittorrent on Ralph (`http://ralph/nzb/`), waiting on a provider account: `docs/media/complete/nzbget-parallel-2026-11-09.md`
 - [ ] Guest SSID
 
 ## Purchases

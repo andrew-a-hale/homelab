@@ -2,6 +2,8 @@
 
 This is a codebase for a homelab. For my homelab.
 
+Always work out machine you are currently running on. `hostname` is the answer; the table below maps it to the machine.
+
 It should use the following:
 - Proton VPN
 - Proton Drive
@@ -17,16 +19,26 @@ Everything should be documented, be agent friendly, and grounded with latest inf
 - Human credentials live in Proton Pass.
 - Tailnet SSH authenticates by identity.
 
-## Where things run
+## Which machine am I on?
 
-**Tom** (Raspberry Pi 5) now runs only the Petcam camera: it serves the 1 fps stream and stills on the tailnet (`:8081`), and Ralph pulls and proxies them.
-no detector, no web app, no nginx.
+| Host | `hostname` | Hardware | OS / arch | Role |
+|---|---|---|---|---|
+| **Jason** | `jason` | Desktop, RTX 3070 | Omarchy (Arch), x86_64 | YOLO fine-tuning for the Petcam; the `amp --no-tui` runner that reaches Tom and Ralph over the tailnet |
+| **Ralph** | `ralph` | Dell OptiPlex 7070 Micro (i5-9500T, 16GB, 256GB NVMe) | Arch, `linux-lts`, x86_64 | The always-on server and public gateway: Jellyfin, qBittorrent, DHT sensor, fail2ban, media library, website, and the only Cloudflare tunnel |
+| **Tom** | `tom` | Raspberry Pi 5 | Debian 13 (trixie), aarch64 | Only the Petcam camera: 1 fps stream + stills on the tailnet (`:8081`), which Ralph pulls and proxies. No detector, no web app, no nginx |
+| **Rose** | `rose` | Laptop | not yet recorded — check on the box | Jellyfin with the TV, standing in for the Google Streamer for now |
 
-**Jason** (Desktop) does YOLO model fine tuning for the Petcam.
+Confirm in one line — prints e.g. `jason x86_64 Omarchy`:
 
-**Rose** (Laptop) uses jellyfin with TV in place of the Google Streamer TV solution temporarily.
+```bash
+printf '%s %s %s\n' "$(hostname)" "$(uname -m)" "$(. /etc/os-release; echo "$PRETTY_NAME")"
+```
 
-**Ralph** (Dell OptiPlex 7070 Micro, Arch) is the always-on server and the public gateway: Jellyfin, qBittorrent, DHT Sensor, fail2ban, the media library, the website, and the only Cloudflare tunnel.
+- SSH aliases land elsewhere: `tom` (`tom.tailad1015.ts.net`, user `tom`), `tom-lan` (`192.168.1.24`), `ralph` (`ralph.tailad1015.ts.net`, user `andy`). Commands run there act on that host, not on the session's host.
+- If `hostname` is none of the four, it is an unrecorded machine: stop and ask, do not guess.
+- Per-machine detail: `docs/ralph/README.md`, `docs/server/README.md` (Tom), `docs/petcam/README.md`.
+
+All machines are on the same network and have an internet speed of at most 100mbit down/25mbit up.
 
 ## Detailed Todos and Tickets
 
