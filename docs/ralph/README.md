@@ -29,6 +29,10 @@ headless, reached over SSH and nothing else. Arch base, pacman for everything.
 - **Firewall:** ufw, per service — `22`, `80`, `8096` on the tailnet; `80` and
   `8096` from the LAN; `41641/udp`. LAN `:22` is closed, so admin SSH is
   tailnet-only (`sudo ufw status verbose`).
+- **Pi lives here too** (1.5.0, npm global, `nodejs`+`npm`+`tmux` from
+  pacman), minimal config: repo `skills/` only, no `pi-config`. Reached from the
+  phone as `ssh andy@ralph -t 'tmux new -A -s pi'`. See
+  [pi-on-ralph-2026-11-09](complete/pi-on-ralph-2026-11-09.md).
 - **The other two boxes:** Tom captures video only (`../server/README.md`);
   Jason is the desktop that trains the petcam model and runs the health check.
   Ralph is the only always-on host and the only Cloudflare tunnel in the house.

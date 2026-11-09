@@ -19,8 +19,8 @@ One script does the whole chain: `~/projects/homelab/scripts/nzb-dl.sh`
 
 | Step | Where | Notes |
 |---|---|---|
-| Search indexer | **Jason** (needs WAN) | `binsearch.info` primary, `nzbking.com` fallback. `nzbindex.com` is client-rendered — its `?q=` search returns no results, don't bother |
-| Download the NZB | Jason | a details id = one collection; `-L` is mandatory (binsearch 308-redirects) |
+| Search indexer | **Jason/Ralph** (needs WAN) | `binsearch.info` primary, `nzbking.com` fallback. `nzbindex.com` is client-rendered — its `?q=` search returns no results, don't bother |
+| Download the NZB | Jason/Ralph | a details id = one collection; `-L` is mandatory (binsearch 308-redirects) |
 | Queue it | **Ralph**, NZBGet | `127.0.0.1:6789` only (`AuthorizedIP=127.0.0.1`) → every call is `ssh ralph curl …`. Never the WAN URL |
 | Files land | Ralph | `Category=Series` → `/srv/media/tv`, `Movies` → `/srv/media/movies`, `Music`, `Software`; no category → `/srv/media/downloads/complete`, which Jellyfin never sees |
 | Play | Jellyfin `http://ralph/jf` | scans every ~30 min, or restart `jellyfin.service` |
@@ -63,6 +63,10 @@ From best to worst:
 `Health` in `status` is the fraction of articles still available at the
 provider: 100% is fresh, 99% is fine, and **anything under ~89.9% is refused
 before a byte is downloaded** (see health gate below).
+
+## Requirements
+1. Always get English Subtitles!
+2. 1080p only!
 
 ## Edge cases, all of which have actually bitten
 
