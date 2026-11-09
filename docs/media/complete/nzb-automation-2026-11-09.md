@@ -20,7 +20,7 @@ Health at queue time: 100% and 99.4%, so both pass the park-gate. Measured
 ~4 MB/s (the 50 Mbit provider cap), ~1h40 for the pair.
 
 Then `scripts/nzb-dl.sh` (search / add / status / history / remove) and the
-agent skill `~/.pi/agent/skills/usenet-download/SKILL.md`.
+agent skill `skills/usenet-download/SKILL.md`.
 
 ## Decisions and why
 
