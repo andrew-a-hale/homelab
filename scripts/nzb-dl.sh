@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# nzb-dl — search a free usenet indexer and hand the post to NZBGet on Ralph.
+# nzb-dl — search NZBGeek and hand the post to NZBGet on Ralph.
 #
-#   nzb-dl.sh search "gurren lagann" [--nzbking]
-#   nzb-dl.sh add <details-id|details-url> <Movies|Series|Music|Software> [--nzbking] [--force] [--dry-run]
+#   nzb-dl.sh search "gurren lagann" [--binsearch|--nzbking]
+#   nzb-dl.sh add <details-id|details-url> <Movies|Series|Music|Software> [--binsearch|--nzbking] [--force] [--dry-run]
+# Indexer defaults to NZBGeek (key: pass show homelab/nzbgeek/apikey); the two
+# free indexers are the fallbacks.
 #   nzb-dl.sh status
 #   nzb-dl.sh history
 #   nzb-dl.sh remove <job-id>
@@ -16,7 +18,7 @@ set -euo pipefail
 UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36'
 RPC='http://127.0.0.1:6789/jsonrpc'
 RALPH="${RALPH_HOST:-ralph}"
-INDEXER=binsearch
+INDEXER=nzbgeek
 DRY_RUN=0
 FORCE=0
 
@@ -32,6 +34,8 @@ fi
 # jsonrpc answers are pretty-printed; parse one field of the first result item.
 rpc_field() { python3 -c 'import json,sys; r=json.load(sys.stdin); print(r.get("result",r.get("error")))'; }
 
+geek_key() { pass show homelab/nzbgeek/apikey; }
+
 fetch() { # fetch <url> <outfile>
   curl -sSL -m 60 -A "$UA" -o "$2" -w '%{http_code}' "$1"
 }
@@ -42,6 +46,7 @@ cmd_search() {
   case "$INDEXER" in
     binsearch) fetch "https://www.binsearch.info/search?$(python3 -c 'import sys,urllib.parse;print(urllib.parse.urlencode({"q":sys.argv[1]}))' "$q")" "$html" >/dev/null ;;
     nzbking)   fetch "https://nzbking.com/search/?$(python3 -c 'import sys,urllib.parse;print(urllib.parse.urlencode({"q":sys.argv[1]}))' "$q")" "$html" >/dev/null ;;
+    nzbgeek)   fetch "https://api.nzbgeek.info/api?t=search&limit=50&o=json&apikey=$(geek_key)&q=$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "$q")" "$html" >/dev/null ;;
   esac
   python3 - "$html" "$INDEXER" <<'PY'
 import html as htmllib, json, re, sys
@@ -84,6 +89,26 @@ else:
                      json.loads('"%s"' % subj.group(1)) if subj else '?',
                      size.group(1) if size else '?',
                      age.group(1) if age else '?'))
+if idx == 'nzbgeek':
+    import datetime
+    ch = json.loads(raw)['channel']
+    if 'item' not in ch:
+        sys.exit('no results (%s)' % ch.get('response', 'indexer said nothing'))
+    rows = []
+    for it in ch['item']:
+        guid = re.search(r'id=([0-9a-f]{32})', it.get('link', ''))
+        if not guid: continue
+        size = next((a['@attributes']['value'] for a in it.get('attr', [])
+                     if a['@attributes'].get('name') == 'size'), '?')
+        try:
+            when = datetime.datetime.strptime(it['pubDate'], '%a, %d %b %Y %H:%M:%S %z')
+            days = (datetime.datetime.now(datetime.timezone.utc) - when).days
+            age = '%dd' % days if days < 60 else '%dmo' % (days // 30) if days < 730 else '%dy' % (days // 365)
+        except Exception:
+            age = '?'
+        rows.append((guid.group(1), it.get('title', '?'),
+                     '%.1fGB' % (int(size) / 1e9) if size.isdigit() else size, age))
+
 if not rows: sys.exit('no results (indexer down, or the query really has nothing)')
 for i, subj, size, age in rows:
     print('%-24s %-10s %-9s %s' % (i, size, age, subj))
@@ -102,6 +127,7 @@ cmd_add() {
   case "$INDEXER" in
     binsearch) rc=$(fetch "https://www.binsearch.info/nzb?id=$id" "$tmp") ;;
     nzbking)   rc=$(fetch "https://nzbking.com/nzb:$id/" "$tmp") ;;
+    nzbgeek)   rc=$(fetch "https://api.nzbgeek.info/api?t=get&apikey=$(geek_key)&id=$id" "$tmp") ;;
   esac
   # A details id gives the whole post; the /nzb endpoint may still hand back an
   # HTML page when the post needs per-file selection, so check for real XML.
@@ -178,6 +204,7 @@ args=()
 for a in "$@"; do
   case "$a" in
     --nzbking) INDEXER=nzbking ;;
+    --binsearch) INDEXER=binsearch ;;
     --force)   FORCE=1 ;;
     --dry-run) DRY_RUN=1 ;;
     *) args+=("$a") ;;

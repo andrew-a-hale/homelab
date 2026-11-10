@@ -56,7 +56,8 @@ the install decisions: [`complete/nzbget-parallel-2026-11-09.md`](complete/nzbge
 | WebUI | `127.0.0.1:6789`, `AuthorizedIP=127.0.0.1`; nginx `/nzb/` is the only way in |
 | Paths | `MainDir=/srv/media/downloads` (on the same filesystem as the library, so a finished job is a `rename`, not a copy), categories `Movies` → `/srv/media/movies`, `Series` → `/srv/media/tv`, `AppendCategoryDir=no` |
 | Unpack/verify | `par2cmdline`, `unrar`, `7zip` from `extra`; `ArticleCache=200`, `WriteBuffer=1024` |
-| Search | `scripts/nzb-dl.sh` — `search "query"` (binsearch, `--nzbking` fallback), `add <id> Series|Movies`, `status`, `history`, `remove <job>`. Wraps the same free indexers (`binsearch.info`, `nzbking.com`; `nzbindex.com` is client-rendered and useless for `?q=`) and pushes through jsonrpc over `ssh ralph`, because the WebUI is loopback-only. Edge cases and the manual fallback: `skills/usenet-download/SKILL.md` and [`complete/nzb-automation-2026-11-09.md`](complete/nzb-automation-2026-11-09.md) |
+| Indexer | **NZBGeek**, lifetime sub, API key in `pass show homelab/nzbgeek/apikey`. Free fallbacks `--binsearch` (`binsearch.info`) and `--nzbking` (`nzbking.com`; `nzbindex.com` is client-rendered and useless for `?q=`). Geek finds re-ups the free indexers miss, which is what unblocked Avatar: The Last Airbender |
+| Search | `scripts/nzb-dl.sh` — `search "query"` (NZBGeek by default), `add <id> Series|Movies`, `status`, `history`, `remove <job>`; pushes through jsonrpc over `ssh ralph`, because the WebUI is loopback-only. Edge cases and the manual fallback: `skills/usenet-download/SKILL.md` and [`complete/nzb-automation-2026-11-09.md`](complete/nzb-automation-2026-11-09.md) |
 | Provider | **XS News**, configured 2026-11-09: `Server1.Host=reader.xsnews.nl`, `Port=563`, `Encryption=yes`, `Connections=20`, `Level=0`, `Active=yes`. Account login in `pass` (`homelab/xsnews/username`, `homelab/xsnews/password`) and the config copy is `/var/lib/nzbget/nzbget.conf` (600, `nzbget:nzbget`). Connections verified by NZBGet's article-availability check, not just by a TCP connect |
 
 No VPN involvement, and nothing to bind: the protocol is TLS to one paid server,
@@ -82,7 +83,8 @@ ssh ralph 'sudo journalctl -u qbittorrent-nox@qbittorrent -n 20 | grep -i interf
 
 ## Automation (2026-11-09)
 
-`scripts/nzb-dl.sh` is the whole chain in one file: search a free indexer, fetch
+`scripts/nzb-dl.sh` is the whole chain in one file: search NZBGeek (free
+indexers as fallbacks), fetch
 that post's NZB, base64 it into an NZBGet `append` over `ssh ralph` (the jsonrpc
 quirks are all in the script), then `status` / `history` / `remove`. Run on Ralph
 itself (where `ssh ralph` has no trusted host key) it skips the hop and curls

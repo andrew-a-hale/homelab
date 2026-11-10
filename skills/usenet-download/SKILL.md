@@ -1,17 +1,17 @@
 ---
 name: usenet-download
 description: >
-  Download media (or anything) over usenet with an NZB: search a free indexer,
-  fetch the NZB, queue it in NZBGet on Ralph, and check it landed in Jellyfin's
+  Download media (or anything) over usenet with an NZB: search NZBGeek, fetch
+  the NZB, queue it in NZBGet on Ralph, and check it landed in Jellyfin's
   library. Also the triage when a download succeeded but never appeared in
   Jellyfin (blank category, orphaned in downloads/complete). Use when asked to
   "download X with nzb", "grab X off usenet", "get the rest of series Y", to
   check on or fix a stuck NZBGet job, or when a download was cancelled/parked by
   the health check.
-  Triggers: nzb, usenet, nzbget, binsearch, nzbking, "download all of X",
-  par2 repair, health check, "cancelling download", dupe, category, unpack,
-  "not in my jellyfin library", "can't see X in jellyfin", invisible download,
-  downloads/complete, jellyfin.db.
+  Triggers: nzb, usenet, nzbget, nzbgeek, geek, binsearch, nzbking,
+  "download all of X", par2 repair, health check, "cancelling download", dupe,
+  category, unpack, "not in my jellyfin library", "can't see X in jellyfin",
+  invisible download, downloads/complete, jellyfin.db.
 ---
 
 # Downloading with NZB
@@ -23,8 +23,8 @@ One script does the whole chain: `~/projects/homelab/scripts/nzb-dl.sh`
 
 | Step | Where | Notes |
 |---|---|---|
-| Search indexer | **Jason/Ralph** (needs WAN) | `binsearch.info` primary, `nzbking.com` fallback. `nzbindex.com` is client-rendered — its `?q=` search returns no results, don't bother |
-| Download the NZB | Jason/Ralph | a details id = one collection; `-L` is mandatory (binsearch 308-redirects) |
+| Search indexer | **Jason/Ralph** (needs WAN) | **NZBGeek is the default** — lifetime sub, API key in `pass show homelab/nzbgeek/apikey`. Fallbacks: `--binsearch` (`binsearch.info`) and `--nzbking` (`nzbking.com`). `nzbindex.com` is client-rendered — its `?q=` search returns no results, don't bother |
+| Download the NZB | Jason/Ralph | geek: `api.nzbgeek.info/api?t=get&id=<guid>`; binsearch: a details id = one collection and `-L` is mandatory (308-redirects) |
 | Queue it | **Ralph**, NZBGet | `127.0.0.1:6789` only (`AuthorizedIP=127.0.0.1`) → `ssh ralph curl …`, or a plain `curl` when the script is already running on Ralph (it checks `/etc/hostname`). Never the WAN URL |
 | Files land | Ralph | `Category=Series` → `/srv/media/tv`, `Movies` → `/srv/media/movies`, `Music`, `Software`. No category → `/srv/media/downloads/complete`, which Jellyfin never sees (the script now refuses an empty one) |
 | Play | Jellyfin `http://ralph/jf` | file-watching picks up new files, but `sudo systemctl restart jellyfin.service` is the certain way |
@@ -37,8 +37,9 @@ on it.
 
 ```bash
 cd ~/projects/homelab
-./scripts/nzb-dl.sh search "gurren lagann"        # id, size, age, subject
-./scripts/nzb-dl.sh search "query" --nzbking      # fallback indexer
+./scripts/nzb-dl.sh search "gurren lagann"        # id, size, age, subject (NZBGeek)
+./scripts/nzb-dl.sh search "query" --binsearch    # free fallback indexer
+./scripts/nzb-dl.sh search "query" --nzbking      # second free fallback
 ./scripts/nzb-dl.sh add <id> Series --dry-run     # fetch + validate, queue nothing
 ./scripts/nzb-dl.sh add <id> Series               # queue it
 ./scripts/nzb-dl.sh status                        # rate, queue, health
@@ -46,10 +47,24 @@ cd ~/projects/homelab
 ./scripts/nzb-dl.sh remove <job-id>               # GroupDelete, when you grabbed the wrong post
 ```
 
-Self-check that the parser still works (binsearch changes its markup now and
-then): `search` must print rows of `id  size  age  subject`. If it prints `?`
-for size/age, the flight-payload parsing broke — the ids are still usable, but
-fix the parse before trusting `add`.
+NZBGeek costs nothing per search and answers better. Two things to know:
+
+- **A trial account can search but not download.** `t=get` answers
+  `<error code="101" description="Trial Account Only"/>` and the site's own
+  download button says "trial limitation". This account is lifetime, so both
+  work; if `add` suddenly returns no NZB from geek, check the subscription
+  before blaming the post.
+- **Geek ANDs every word of the query**, so long queries return 0 with a
+  cheerful `total: 0`. Search 3–4 words (`avatar airbender nikt0`), not a
+  sentence. `binsearch` is looser and is worth one try when geek says nothing.
+
+The key lives on any release page as the `apikey=` in its NZB link, if it ever
+needs re-reading.
+
+Self-check that the parsers still work (both indexers change their markup now
+and then): `search` must print rows of `id  size  age  subject`. If it prints
+`?` for size/age, the parsing broke — the ids are still usable, but fix the
+parse before trusting `add`.
 
 ## Picking the post — the part that decides success
 
@@ -89,6 +104,22 @@ threshold. The journal line is
 Options, in order: pick a fresher post; or
 `HealthCheck=none` in `/var/lib/nzbget/nzbget.conf` + `sudo systemctl restart nzbget`
 (only worth it when par2 redundancy can still repair the hole).
+
+**A whole title can be gone, at any age.** Avatar: The Last Airbender (2005)
+1080p sits at 85–90% health on *every* post the free indexers show — 8 days old
+and 1011 days old, iVy, OFT, FraMeSToR, SubsNoJutsu alike — while Korra in the
+same session is 100%. Nothing to pick there: par2 is smaller than the hole
+(9.3% vs 10.3%), a fresh post is no healthier, and `HealthCheck=none` just buys
+`FAILURE/UNPACK`.
+The fix was the indexer, not the post: the free indexers only find the heavily
+DMCA'd scene releases, while NZBGeek also lists per-episode re-ups the others
+miss — `Avatar.The.Last.Airbender.S01E01…1080p.BluRay.x264-nikt0` (9mo) came
+back at health 998/1000 and downloaded clean. So before declaring a title
+gone, search geek and look past the obvious names.
+Probe with one write-off job (top priority, watch the health column,
+`GroupDelete`), don't cycle through a dozen posts. Control check that the
+provider is fine: a different show's job at 100%. See
+`docs/media/todo/avatar-tla-1080p-2026-11-10.md`.
 
 **Dupe check eats the job.** History shows `DELETED/COPY` — NZBGet matched an
 existing file. Retry with `--force` (`DupeMode=force`), or accept it as already
