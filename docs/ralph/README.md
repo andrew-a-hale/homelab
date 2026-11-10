@@ -33,6 +33,10 @@ headless, reached over SSH and nothing else. Arch base, pacman for everything.
   pacman), minimal config: repo `skills/` only, no `pi-config`. Reached from the
   phone as `ssh andy@ralph -t 'tmux new -A -s pi'`. See
   [pi-on-ralph-2026-11-09](complete/pi-on-ralph-2026-11-09.md).
+- **The repo clone here is read-only in practice.** `~/projects/homelab` clones
+  GitHub over HTTPS and `git pull` works anonymously (public repo), but `push`
+  fails with `could not read Username for 'https://github.com'` — no credential
+  on this box, by design. Commit and push from Jason, then `git pull` here.
 - **The other two boxes:** Tom captures video only (`../server/README.md`);
   Jason is the desktop that trains the petcam model and runs the health check.
   Ralph is the only always-on host and the only Cloudflare tunnel in the house.
