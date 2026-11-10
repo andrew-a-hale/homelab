@@ -2,7 +2,7 @@
 # nzb-dl — search a free usenet indexer and hand the post to NZBGet on Ralph.
 #
 #   nzb-dl.sh search "gurren lagann" [--nzbking]
-#   nzb-dl.sh add <details-id|details-url> <Movies|Series|Music|Software|""> [--nzbking] [--force] [--dry-run]
+#   nzb-dl.sh add <details-id|details-url> <Movies|Series|Music|Software> [--nzbking] [--force] [--dry-run]
 #   nzb-dl.sh status
 #   nzb-dl.sh history
 #   nzb-dl.sh remove <job-id>
@@ -89,7 +89,9 @@ cmd_add() {
   local ref="$1" cat="${2:-}" id nzb tmp rc
   id=$(printf '%s' "$ref" | sed -e 's#.*/details[/:]\([A-Za-z0-9_-]*\).*#\1#' -e 's#.*/details/##')
   [ -n "$id" ] || usage
-  case "$cat" in Movies|Series|Music|Software|'') ;; *) echo "unknown category '$cat' (Movies|Series|Music|Software|empty)" >&2; exit 2 ;; esac
+  # Empty category silently parks the job in /srv/media/downloads/complete,
+  # where Jellyfin never looks — Cowboy Bebop sat there for a night. Refuse it.
+  case "$cat" in Movies|Series|Music|Software) ;; *) echo "category required: Movies|Series|Music|Software (got '$cat')" >&2; exit 2 ;; esac
   tmp=$(mktemp --suffix=.nzb)
   case "$INDEXER" in
     binsearch) rc=$(fetch "https://www.binsearch.info/nzb?id=$id" "$tmp") ;;

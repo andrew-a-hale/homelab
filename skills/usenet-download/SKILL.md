@@ -3,11 +3,15 @@ name: usenet-download
 description: >
   Download media (or anything) over usenet with an NZB: search a free indexer,
   fetch the NZB, queue it in NZBGet on Ralph, and check it landed in Jellyfin's
-  library. Use when asked to "download X with nzb", "grab X off usenet", "get
-  the rest of series Y", to check on or fix a stuck NZBGet job, or when a
-  download was cancelled/parked by the health check.
+  library. Also the triage when a download succeeded but never appeared in
+  Jellyfin (blank category, orphaned in downloads/complete). Use when asked to
+  "download X with nzb", "grab X off usenet", "get the rest of series Y", to
+  check on or fix a stuck NZBGet job, or when a download was cancelled/parked by
+  the health check.
   Triggers: nzb, usenet, nzbget, binsearch, nzbking, "download all of X",
-  par2 repair, health check, "cancelling download", dupe, category, unpack.
+  par2 repair, health check, "cancelling download", dupe, category, unpack,
+  "not in my jellyfin library", "can't see X in jellyfin", invisible download,
+  downloads/complete, jellyfin.db.
 ---
 
 # Downloading with NZB
@@ -22,8 +26,8 @@ One script does the whole chain: `~/projects/homelab/scripts/nzb-dl.sh`
 | Search indexer | **Jason/Ralph** (needs WAN) | `binsearch.info` primary, `nzbking.com` fallback. `nzbindex.com` is client-rendered — its `?q=` search returns no results, don't bother |
 | Download the NZB | Jason/Ralph | a details id = one collection; `-L` is mandatory (binsearch 308-redirects) |
 | Queue it | **Ralph**, NZBGet | `127.0.0.1:6789` only (`AuthorizedIP=127.0.0.1`) → every call is `ssh ralph curl …`. Never the WAN URL |
-| Files land | Ralph | `Category=Series` → `/srv/media/tv`, `Movies` → `/srv/media/movies`, `Music`, `Software`; no category → `/srv/media/downloads/complete`, which Jellyfin never sees |
-| Play | Jellyfin `http://ralph/jf` | scans every ~30 min, or restart `jellyfin.service` |
+| Files land | Ralph | `Category=Series` → `/srv/media/tv`, `Movies` → `/srv/media/movies`, `Music`, `Software`. No category → `/srv/media/downloads/complete`, which Jellyfin never sees (the script now refuses an empty one) |
+| Play | Jellyfin `http://ralph/jf` | file-watching picks up new files, but `sudo systemctl restart jellyfin.service` is the certain way |
 
 Provider is XS News over TLS (no VPN, no peers — that is qBittorrent's problem).
 Measured ceiling: **~4 MB/s** (50 Mbit cap), so 23 GB ≈ 1h40. Say so, don't wait
@@ -99,9 +103,59 @@ provider outage — check `pass show homelab/xsnews/username` still works.
 available` → the job ends `FAILURE/SCAN`/`FAILURE/UNPACK`. Nothing to fix; the
 post is gone. Find another.
 
-**Wrong category = invisible download.** Empty category drops the job in
-`/srv/media/downloads/complete` and Jellyfin never sees it. Binsearch's own
-`Category` names are case-sensitive: `Movies`, `Series`, `Music`, `Software`.
+**Wrong category = invisible download.** An empty category drops the job in
+`/srv/media/downloads/complete` and Jellyfin never sees it, even though the job
+reports `SUCCESS`. `nzb-dl.sh add` refuses an empty one (exit 2) for exactly this
+reason — it bit hard once: 26 Cowboy Bebop episodes, 97 GB, invisible
+(`docs/media/complete/cowboy-bebop-invisible-in-jellyfin-2026-11-10.md`). If a job
+was queued some other way (web UI, raw jsonrpc), nobody checked the category.
+Binsearch's own `Category` names are case-sensitive: `Movies`, `Series`, `Music`,
+`Software`.
+
+## "I downloaded it but it's not in Jellyfin"
+
+Work down this list; each step is one command and usually ends the search.
+
+```bash
+# 1. Did the job actually succeed? Category column blank = it's in downloads/complete.
+./scripts/nzb-dl.sh history | head -10
+
+# 2. What is sitting in the folder Jellyfin ignores?
+ssh ralph 'du -sh /srv/media/downloads/complete; ls /srv/media/downloads/complete'
+
+# 3. Is it on disk in the library but unindexed / wrongly named?
+ssh ralph 'ls /srv/media/tv /srv/media/movies; find /srv/media/tv -iname "*<show>*"'
+
+# 4. Is Jellyfin's database really missing it? (the only proof that matters)
+ssh ralph 'sudo cp /var/lib/jellyfin/data/jellyfin.db /tmp/jf.db && sudo chmod 644 /tmp/jf.db'
+ssh ralph "sqlite3 /tmp/jf.db \"select Name, Path from BaseItems where Path like '%<show>%' limit 5;\""
+ssh ralph "sqlite3 /tmp/jf.db \"select count(*) from BaseItems where Path like '%<show>%';\""
+```
+
+Item count check: 1 series + 1 season + N episodes = `N+2` rows. If the rows are
+there, it is a client cache — refresh the app; if the folder is there but rows
+are not, `sudo systemctl restart jellyfin.service` and re-query.
+
+**Relocate orphans** (the empty category case) without re-downloading. The job
+dirs are `nzbget`-owned, so plain `mv` as `andy` fails with `Permission denied` —
+use `sudo` throughout, and the episode number comes from the `E<NN>` in the job
+name:
+
+```bash
+ssh ralph 'set -e
+D="/srv/media/tv/Cowboy Bebop (1998)/Season 01"; sudo mkdir -p "$D"
+for f in /srv/media/downloads/complete/Cowboy.Bebop.E*/; do
+  ep=$(basename "$f" | sed -E "s/^Cowboy\.Bebop\.E([0-9]+)\..*/\1/")
+  src=$(sudo find "$f" -maxdepth 1 -name "*.mkv" | head -1)
+  sudo mv "$src" "$D/Cowboy Bebop (1998) - S01E${ep}.mkv"
+  sudo rmdir "$f"
+done
+sudo chown -R nzbget:jellyfin "/srv/media/tv/Cowboy Bebop (1998)"
+sudo chmod -R 775 "/srv/media/tv/Cowboy Bebop (1998)"'
+```
+
+A failed `mv` mid-loop leaves the first episode already renamed — the loop is
+idempotent for the rest, just fix the missing one by hand.
 
 **Library layout after unpack.** The job name (derived from the post subject)
 becomes the folder directly under `tv/` or `movies/`. Jellyfin wants
@@ -111,8 +165,8 @@ still match by filename, but a tidy-up is cheap:
 
 ```bash
 ssh ralph 'ls /srv/media/tv /srv/media/movies'
-# then, per show:
-ssh ralph 'mv "/srv/media/tv/<job folder>" "/srv/media/tv/Gurren Lagann (2007)"; mkdir -p "/srv/media/tv/Gurren Lagann (2007)/Season 01"; mv /srv/media/tv/Gurren\ Lagann\ \(2007\)/*.mkv "/srv/media/tv/Gurren Lagann (2007)/Season 01/"'
+# then, per show (sudo — the job dirs are nzbget-owned, plain mv gives Permission denied):
+ssh ralph 'sudo mv "/srv/media/tv/<job folder>" "/srv/media/tv/Gurren Lagann (2007)"; sudo mkdir -p "/srv/media/tv/Gurren Lagann (2007)/Season 01"; sudo mv /srv/media/tv/Gurren\ Lagann\ \(2007\)/*.mkv "/srv/media/tv/Gurren Lagann (2007)/Season 01/"'
 ssh ralph 'sudo chown -R nzbget:jellyfin …; sudo chmod -R 775 …'   # keep Jellyfin able to read
 ```
 
@@ -129,10 +183,12 @@ successful unpack.
 
 ```bash
 ./scripts/nzb-dl.sh status      # queue empty, nothing DOWNLOADING
-./scripts/nzb-dl.sh history     # last jobs SUCCESS/UNPACK, not FAILURE/*
+./scripts/nzb-dl.sh history     # last jobs SUCCESS/UNPACK, not FAILURE/*, category not blank
 ssh ralph 'find /srv/media/tv "<Show>" -name "*.mkv" | wc -l'   # episodes present
+ssh ralph "sqlite3 /tmp/jf.db \"select count(*) from BaseItems where Path like '%<Show>%';\""  # N+2 rows in Jellyfin
 ssh ralph 'sudo journalctl -u nzbget --since "-2h" | grep -Ei "error|warning" | tail'
 ```
 
 Report the count that landed, the folder it landed in, and whether Jellyfin
-needs a rescan (`sudo systemctl restart jellyfin`, or wait ~30 min).
+picked it up — prove it in `jellyfin.db`, not by saying "it should scan". If it
+did not, `sudo systemctl restart jellyfin.service` and re-query.
