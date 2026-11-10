@@ -84,7 +84,9 @@ ssh ralph 'sudo journalctl -u qbittorrent-nox@qbittorrent -n 20 | grep -i interf
 
 `scripts/nzb-dl.sh` is the whole chain in one file: search a free indexer, fetch
 that post's NZB, base64 it into an NZBGet `append` over `ssh ralph` (the jsonrpc
-quirks are all in the script), then `status` / `history` / `remove`. First real
+quirks are all in the script), then `status` / `history` / `remove`. Run on Ralph
+itself (where `ssh ralph` has no trusted host key) it skips the hop and curls
+`127.0.0.1:6789` directly. First real
 use: the Gurren Lagann series batch (`Series`) and its two films as one pack
 (`Movies`), 23 GB, ~4 MB/s. Says the details:
 [`complete/nzb-automation-2026-11-09.md`](complete/nzb-automation-2026-11-09.md).

@@ -7,7 +7,8 @@
 #   nzb-dl.sh history
 #   nzb-dl.sh remove <job-id>
 #
-# Runs on Jason (or any box with curl+python3+ssh); NZBGet itself is loopback-only
+# Runs on Jason or Ralph (or any box with curl+python3+ssh) — on Ralph it skips the
+# ssh hop; NZBGet itself is loopback-only
 # on Ralph, so every jsonrpc call is `ssh ralph curl 127.0.0.1:6789`.
 # See docs/media/README.md and the usenet-download skill.
 set -euo pipefail
@@ -21,7 +22,12 @@ FORCE=0
 
 usage() { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 
-rpc() { ssh "$RALPH" "curl -s -m ${2:-120} -d @- $RPC" ; }
+# When this already is Ralph, skip the ssh hop (and its host-key trust).
+if [ "$(cat /etc/hostname 2>/dev/null)" = "$RALPH" ]; then
+  rpc() { curl -s -m ${2:-120} -d @- $RPC ; }
+else
+  rpc() { ssh "$RALPH" "curl -s -m ${2:-120} -d @- $RPC" ; }
+fi
 
 # jsonrpc answers are pretty-printed; parse one field of the first result item.
 rpc_field() { python3 -c 'import json,sys; r=json.load(sys.stdin); print(r.get("result",r.get("error")))'; }

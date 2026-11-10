@@ -25,7 +25,7 @@ One script does the whole chain: `~/projects/homelab/scripts/nzb-dl.sh`
 |---|---|---|
 | Search indexer | **Jason/Ralph** (needs WAN) | `binsearch.info` primary, `nzbking.com` fallback. `nzbindex.com` is client-rendered — its `?q=` search returns no results, don't bother |
 | Download the NZB | Jason/Ralph | a details id = one collection; `-L` is mandatory (binsearch 308-redirects) |
-| Queue it | **Ralph**, NZBGet | `127.0.0.1:6789` only (`AuthorizedIP=127.0.0.1`) → every call is `ssh ralph curl …`. Never the WAN URL |
+| Queue it | **Ralph**, NZBGet | `127.0.0.1:6789` only (`AuthorizedIP=127.0.0.1`) → `ssh ralph curl …`, or a plain `curl` when the script is already running on Ralph (it checks `/etc/hostname`). Never the WAN URL |
 | Files land | Ralph | `Category=Series` → `/srv/media/tv`, `Movies` → `/srv/media/movies`, `Music`, `Software`. No category → `/srv/media/downloads/complete`, which Jellyfin never sees (the script now refuses an empty one) |
 | Play | Jellyfin `http://ralph/jf` | file-watching picks up new files, but `sudo systemctl restart jellyfin.service` is the certain way |
 
