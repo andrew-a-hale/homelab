@@ -78,9 +78,9 @@ Tom is a capture-only camera appliance: no crontab entry, no script under
 Jason's `backup` directory, seen over NFS). Ralph never mounted it.
 
 Removed: export entry (backup at `/etc/exports.bak-2026-11-11`), `exportfs -ra`,
-`systemctl disable --now nfs-server` — port 2049 is closed. Tom's own mount is
-still in its fstab and needs unmounting on the Pi with a password; the exact
-commands are in [`../services.md`](../services.md).
+`systemctl disable --now nfs-server` — port 2049 is closed. Tom's side was
+finished by hand the same evening: unmounted, fstab line deleted, backup file
+removed. Verified: no mount, three-line fstab, empty `/mnt/storage` directory.
 
 ## Still to do after the reboot
 

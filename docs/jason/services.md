@@ -118,15 +118,10 @@ cron anywhere. The two things that must be handled *during* the migration, not a
 `protondrive-weekly.sh`'s `/mnt/storage/backup` path. No NFS export to re-create:
 Tom does not need one.
 
-## Tom's stale mount (needs a password on the Pi)
+## Tom's mount: removed (2026-11-11)
 
-`ssh tom` then:
-
-```sh
-sudo umount /mnt/storage
-sudo cp /etc/fstab /etc/fstab.bak-2026-11-11
-sudo sed -i '\#192.168.1.181:/mnt/storage#d' /etc/fstab
-```
-
-Until that runs, Tom keeps a dead NFS handle at `/mnt/storage` (`nofail` is set,
-so it boots fine) — nothing on Tom reads it.
+Verified after cleanup: `mount | grep storage` → nothing, `/etc/fstab` is down to
+its three system lines with no NFS entry, `/mnt/storage` is an empty root-owned
+directory. Tom has no reference to `/mnt/storage` anywhere in its user crontab or
+`/home/tom`. NFS is gone from both ends: Jason exports nothing, `nfs-server` is
+inactive, port 2049 closed.
