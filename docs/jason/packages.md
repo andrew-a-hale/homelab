@@ -5,6 +5,14 @@ verdict from the walkthrough ([`todo/needs.md`](todo/needs.md)). Generated from
 `pacman -Qeq` + `expac` + `scripts/pacman-atime-audit.sh 30`, so the sizes and
 descriptions are the machine's own.
 
+> **Snapshot, pre-cutover.** This is the inventory taken the morning of
+> 2026-11-11, before the Omarchy layer and the 71 drops were removed. The boxes
+> below are the plan, not the current state — for that run `pacman -Qe`. Where
+> the plan changed while executing, [`complete/left-omarchy-2026-11-11.md`](complete/left-omarchy-2026-11-11.md)
+> and [`complete/post-cutover-sweep-2026-11-11.md`](complete/post-cutover-sweep-2026-11-11.md)
+> are the record: `mise-bin` was retired, `linux-omarchy` removed, and both NTFS
+> disks became ext4. Current totals: **199 explicit, 1219 packages.**
+
 **265 explicit packages** (`pacman -Qe`), 13.9 GiB installed,
 out of 1475 packages in total — the rest is dependencies. Verdicts: **drop** =
 decided out, **keep (plumbing)** = never run directly but needed, **keep** = never

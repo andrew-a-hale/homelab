@@ -14,7 +14,7 @@ Everything here is derived from `docs/jason/`:
 | `fuzzel/fuzzel.ini` | Omarchy's menu | `SUPER + SPACE` |
 | `hypr/scripts/` | `omarchy-*` helper scripts | capture, recording, power menu |
 | `shell/bashrc`, `shell/starship.toml` | `~/.bashrc`'s `source /usr/share/omarchy/default/bash/rc` | the prompt and history settings Omarchy's rc provided |
-| `limine/50-jason.conf` | `/etc/limine-entry-tool.d/omarchy-{defaults,uki}.conf` | UKI settings `omarchy-settings` owns — see [`../docs/jason/complete/boot-entries-off-omarchy-2026-11-11.md`](../docs/jason/complete/boot-entries-off-omarchy-2026-11-11.md) |
+| `limine/zz-jason.conf` | `/etc/limine-entry-tool.d/zz-jason.conf` | UKI settings `omarchy-settings` used to own; `zz-` so it is read last and wins — see [`../docs/jason/complete/boot-entries-off-omarchy-2026-11-11.md`](../docs/jason/complete/boot-entries-off-omarchy-2026-11-11.md) |
 
 ## Deploy
 
@@ -27,7 +27,9 @@ cp -a config/waybar  ~/.config/
 cp -a config/fuzzel  ~/.config/
 cp    config/shell/bashrc   ~/.bashrc
 cp    config/shell/starship.toml ~/.config/
-sudo cp config/limine/50-jason.conf /etc/limine-entry-tool.d/   # already done
+sudo cp config/limine/zz-jason.conf /etc/limine-entry-tool.d/   # already done
+# one knob is NOT in that directory — snapshot boot entries read it here:
+sudo sed -i 's/^LIMIT_USAGE_PERCENT=.*/LIMIT_USAGE_PERCENT=70/' /etc/default/limine
 ```
 
 Then enable the three that ship systemd user units — do **not** start them from

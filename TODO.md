@@ -8,7 +8,7 @@
 ## Jason Desktop
 
 - [x] Leave Omarchy for plain Arch + Hyprland with only the apps actually used — done 2026-11-11: `docs/jason/complete/left-omarchy-2026-11-11.md` (one reboot to prove the stock kernel)
-- [ ] After that boot: drop `linux-omarchy` + its UKI (also re-enables snapshot boot entries), then move mise's node/uv/go/zig/julia/elixir/claude/codex/gh off mise so `mise-bin` can go — steps 2–3 of the same record
+- [x] After that boot: dropped `linux-omarchy` + its UKI (snapshot boot entries now work — one, capped by UKI size), retired `mise-bin` for npm/pacman equivalents, and wiped both data disks to ext4 — 2026-11-11: `docs/jason/complete/post-cutover-sweep-2026-11-11.md`
 - [x] Fill the gaps in `docs/jason/README.md` — decided 2026-11-11: `docs/jason/complete/what-jason-needs-2026-11-11.md`, keymap in `docs/jason/binds.md`
 
 ## Purchases
