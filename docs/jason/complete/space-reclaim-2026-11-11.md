@@ -116,12 +116,24 @@ losing the rollback points.
 - `/etc/pacman.conf` keeps a one-line comment where `[omarchy]` was, pointing at
   the backup — deliberate, it explains the gap to whoever reads it next.
 
+## Last pass, after the residue audit
+
+- **Docker images 8.4G** — `docker image prune -a` took every image not attached to
+  a running container. All re-pullable; the 22 volumes (the actual data) were not
+  touched, and the two live containers kept theirs.
+- **Trash 566M** emptied.
+- **`~/.local/share/mise`** — the last 1.3G that was held only by the running
+  `pi` session went with the next pass; nothing references it.
+- **`~/services.retired-2026-11-11`** deleted once the units ran from the repo
+  (`services/jason/README.md` records the repoint). It was its own git repo with a
+  remote, so it was reproducible anyway.
+
 ## Left alone, on purpose
 
 | Thing | Size | Why it stays |
 |---|---|---|
 | `~/.local/share/Steam` | 340G | Real games. `Path of Exile 2` alone is 145G, `Expedition 33` 44G, `Grim Dawn` 16G. Moving or pruning it is a user decision, not cleanup — see below |
-| `~/.config/hypr.omarchy-2026-11-11` | small | The rollback tree. Keep until a week of the new config has held |
+| `~/.config/hypr.omarchy-2026-11-11`, `~/.bashrc.omarchy-2026-11-11` | small | The user-level rollback. Held until the post-cleanup reboot proves the new config — `@home` is not snapshotted, so these are the only copy |
 | `~/.local/share/Trash` | 566M | Not mine to empty |
 | `~/.rustup` 2.8G, `~/go` 2.9G, `~/.cargo` 354M, `~/.local/share/NuGet` 443M | | Toolchains he actually uses (or used recently); deleting is not "cleanup" |
 | `~/.local/share/{nvim,opencode}` 1.9G + 1.2G | | Plugin/agent data, would re-download and lose state |
