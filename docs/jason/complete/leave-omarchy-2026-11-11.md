@@ -1,6 +1,8 @@
 # Leaving Omarchy for plain Arch (Jason)
 
-Status: investigation, 2026-11-09. Nothing changed yet.
+Status: **plan, executed 2026-11-11.** The outcome, including the traps, is in
+[`../complete/left-omarchy-2026-11-11.md`](../complete/left-omarchy-2026-11-11.md);
+this file is kept as the plan it was executed from.
 
 Goal: keep Arch + Hyprland + the apps actually used, drop Omarchy's opinionated layer.
 

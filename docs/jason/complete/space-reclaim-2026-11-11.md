@@ -51,6 +51,39 @@ those stacks is `docker compose up` away from existing again. Worth knowing
 before doing it again: `container prune` is not the same size of decision as
 `builder prune`.
 
+## Packages: five leaves and 2.8G
+
+No orphans existed (`pacman -Qtdq` empty) and `scripts/pacman-atime-audit.sh 90`
+reported **nothing unused in 90 days** — every explicit package with a binary had
+one run inside the last quarter. So this part is not an audit result, it is six
+judgement calls, each with a `Required By: None` and a reason:
+
+| Package | Size | Why it went |
+|---|---|---|
+| `dotnet-source-built-artifacts` | 1.27G | Source-built .NET binaries for building .NET *itself*. Not a dependency of `dotnet-sdk` (that wants `dotnet-runtime` + `dotnet-targeting-pack`). `dotnet --version` still 10.0.101 afterwards |
+| `emscripten` | 1.29G | Only hits were inside `node_modules` of a pi example and a rust bindgen JSON. No project here builds wasm; `clang`/`llvm` stay for rust |
+| `yaru-icon-theme` | 63M | Omarchy's icon theme; nothing in `~/.config/gtk-*`, hypr or `config/` names it |
+| `bun-bin` | 85M | No `bun.lockb`/`bunfig.toml` anywhere in `~/projects`, last binary read Oct 10 — node/npm do that job |
+| `tzupdate` | 2.4M | Ships one binary, no `.timer`, no unit — the timezone is set once |
+| `feh` | 1M | X11 wallpaper setter; `hyprpaper` is the wallpaper |
+
+`cmake` (103M) came out with them: removing `emscripten` left it orphaned and
+`pacman -Rns` swept it. Reinstall if a C++ build ever asks.
+
+Net: 1205 packages / 191 explicit.
+
+**Kept on purpose, though each is one command to drop:** `julia` 571M (run Oct
+16), `odin` 122M, `d2-bin` 40M, `python310` 55M, `amp-desktop-bin` 284M, `herdr`
+21M, `visual-studio-code-bin` 1.05G, `lib32-nvidia-utils` 563M (Steam needs the
+32-bit stack). The 90-day audit says all of them were executed recently, so it is
+a taste question, not a dead-weight one.
+
+## Snapshots are not pinning much
+
+Checked before blaming them: exclusive size per snapshot is 0–1.4G (the rest is
+shared CoW of the live tree), so deleting 9–13 would buy at most ~1.5G. Not worth
+losing the rollback points.
+
 ## Also fixed
 
 - `/etc/plymouth/plymouthd.conf` had `Theme=omarchy`, a theme package that is

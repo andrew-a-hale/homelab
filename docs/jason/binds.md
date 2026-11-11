@@ -26,10 +26,10 @@ the config spells them. Mouse binds are named as Hyprland names them.
 | `SUPER + CTRL + MINUS` | resize narrower, big step | |
 | `SUPER + CTRL + EQUAL` | resize wider, big step | |
 | `SUPER + SHIFT + F` | fullscreen | was files on the old config, swapped |
-| `SUPER + T` | toggle this window floating | |
+| `SUPER + T` | toggle this window floating | floating sizes it to 60% of the monitor and centres it; tiling hands the space back |
 | `SUPER + J` | toggle split | |
 | `SUPER + P` | pseudo-tile | |
-| `SUPER + O` | pop window out: float + pin | keep |
+| `SUPER + O` | pop window out: float + pin | keep. floats at 60% like `SUPER + T` |
 | `SUPER + W` | close window | polite close: WM_DELETE. Steam's XWayland window ignores it |
 | `SUPER + SHIFT + W` | force-close window | `kill`, for apps that ignore the polite close (Steam) |
 

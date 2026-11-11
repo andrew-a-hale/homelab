@@ -1,7 +1,10 @@
 # Jason desktop — what I actually use and want (target spec)
 
-Status: draft spec, 2026-11-09. This is the "what", not the "how" — see
-`leave-omarchy.md` for the migration plan.
+Status: **executed, 2026-11-11.** Every open question below is answered by the
+shipped config in [`config/`](../../../config/README.md) — the checkboxes were
+ticked when the cutover landed, not when the spec was written. The spec is kept
+for the reasoning and the install contract; the migration itself is recorded in
+[`../complete/left-omarchy-2026-11-11.md`](../complete/left-omarchy-2026-11-11.md).
 
 Rule: **anything not listed here does not get installed** on the new plain-Arch
 desktop. Evidence, not guesses: `~/.config/hypr/*.lua`, running processes,
@@ -123,18 +126,18 @@ wallpapers stay), `aether` (colour-from-wallpaper theming — unused, drop),
 
 ## 7. Wants — decisions I still have to make
 
-- [ ] Bar: waybar, something lighter, or none (status via keybind/btop)?
-- [ ] Launcher/run menu: fuzzel, rofi, or none (Super+Return everything)?
-- [ ] Notifications: mako, dunst, swaync, or none?
-- [ ] Volume/brightness OSD: swayosd, or silent keys?
-- [ ] Theming: keep Tokyo Night + wallpaper theming (aether/owe), or flat
+- [x] Bar: waybar, something lighter, or none (status via keybind/btop)?
+- [x] Launcher/run menu: fuzzel, rofi, or none (Super+Return everything)?
+- [x] Notifications: mako, dunst, swaync, or none?
+- [x] Volume/brightness OSD: swayosd, or silent keys?
+- [x] Theming: keep Tokyo Night + wallpaper theming (aether/owe), or flat
       dark + `wallust`/pywal and stop there?
-- [ ] Clipboard history: keep Omarchy's clipboard menu (needs a tool) or drop?
-- [ ] Keep the "menu" concept (SUPER+SPACE) at all, or keybind-only?
-- [ ] Emoji picker, share picker, dictation, voxtype, v4l2-relayd: any of it?
+- [x] Clipboard history: keep Omarchy's clipboard menu (needs a tool) or drop?
+- [x] Keep the "menu" concept (SUPER+SPACE) at all, or keybind-only?
+- [x] Emoji picker, share picker, dictation, voxtype, v4l2-relayd: any of it?
 - [x] Per-workspace floating — settled in §2.1: one `SUPER + L` toggle (named
       window rule + one loop), nothing else from Omarchy's layout system.
-- [ ] Anything else Omarchy was hiding (tiling layout plugins, per-monitor
+- [x] Anything else Omarchy was hiding (tiling layout plugins, per-monitor
       theming, Hyprland animations)?
 
 ## 8. Explicitly not wanted
