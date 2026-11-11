@@ -13,7 +13,7 @@ rebuild starts from evidence instead of guesses. Gaps to fill are at the bottom.
 
 | Layer | What | Why |
 |---|---|---|
-| Base OS | Arch, 1205 packages / 191 explicit | Omarchy layer gone 2026-11-11 — [record](complete/left-omarchy-2026-11-11.md); [kernel/mise/disks](complete/post-cutover-sweep-2026-11-11.md); [space](complete/space-reclaim-2026-11-11.md) |
+| Base OS | Arch, 1203 packages / 189 explicit | Omarchy layer gone 2026-11-11 — [record](complete/left-omarchy-2026-11-11.md); [kernel/mise/disks](complete/post-cutover-sweep-2026-11-11.md); [space](complete/space-reclaim-2026-11-11.md) |
 | Kernel | stock `linux` 7.2.11-arch1-1 | `linux-omarchy` removed 2026-11-11 once this booted — [sweep](complete/post-cutover-sweep-2026-11-11.md) |
 | Session | sddm → `uwsm` → Hyprland 0.56.2 (Wayland) | |
 | WM config | Lua in `~/.config/hypr/`, ours: `hyprland.lua` requires `monitors`, `input`, `looknfeel`, `rules`, `binds`, `autostart` | source of truth is [`../../config/hypr/`](../../config/README.md); the old Omarchy tree is kept at `~/.config/hypr.omarchy-2026-11-11` |

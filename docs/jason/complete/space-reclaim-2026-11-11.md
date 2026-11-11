@@ -70,12 +70,16 @@ judgement calls, each with a `Required By: None` and a reason:
 `cmake` (103M) came out with them: removing `emscripten` left it orphaned and
 `pacman -Rns` swept it. Reinstall if a C++ build ever asks.
 
-Net: 1205 packages / 191 explicit.
+Net: 1203 packages / 189 explicit.
+
+Two more went by hand on request, 1.3G: `visual-studio-code-bin` (1.05G —
+neovim is the editor here, nothing in `.gitconfig`/`.bashrc` points at `code`)
+and `amp-desktop-bin` (284M — the GUI wrapper; the `amp` CLI comes from the
+`@ampcode/cli` npm package and is unaffected, which is what the runner rules use).
 
 **Kept on purpose, though each is one command to drop:** `julia` 571M (run Oct
-16), `odin` 122M, `d2-bin` 40M, `python310` 55M, `amp-desktop-bin` 284M, `herdr`
-21M, `visual-studio-code-bin` 1.05G, `lib32-nvidia-utils` 563M (Steam needs the
-32-bit stack). The 90-day audit says all of them were executed recently, so it is
+16), `odin` 122M, `d2-bin` 40M, `python310` 55M, `herdr` 21M,
+`lib32-nvidia-utils` 563M (Steam needs the 32-bit stack). The 90-day audit says all of them were executed recently, so it is
 a taste question, not a dead-weight one.
 
 ## Snapshots are not pinning much

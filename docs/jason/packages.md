@@ -11,7 +11,7 @@ descriptions are the machine's own.
 > the plan changed while executing, [`complete/left-omarchy-2026-11-11.md`](complete/left-omarchy-2026-11-11.md)
 > and [`complete/post-cutover-sweep-2026-11-11.md`](complete/post-cutover-sweep-2026-11-11.md)
 > are the record: `mise-bin` was retired, `linux-omarchy` removed, and both NTFS
-> disks became ext4. Current totals: **191 explicit, 1205 packages.**
+> disks became ext4. Current totals: **189 explicit, 1203 packages.**
 
 **265 explicit packages** (`pacman -Qe`), 13.9 GiB installed,
 out of 1475 packages in total — the rest is dependencies. Verdicts: **drop** =
