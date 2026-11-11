@@ -16,7 +16,7 @@ rebuild starts from evidence instead of guesses. Gaps to fill are at the bottom.
 | Base OS | Arch, 1184 packages / 177 explicit | Omarchy layer gone 2026-11-11 — [record](complete/left-omarchy-2026-11-11.md); [kernel/mise/disks](complete/post-cutover-sweep-2026-11-11.md); [space](complete/space-reclaim-2026-11-11.md); [residue audit](complete/omarchy-residue-2026-11-11.md) |
 | Kernel | stock `linux` 7.2.11-arch1-1 | `linux-omarchy` removed 2026-11-11 once this booted — [sweep](complete/post-cutover-sweep-2026-11-11.md) |
 | Session | sddm → `uwsm` → Hyprland 0.56.2 (Wayland) | |
-| WM config | Lua in `~/.config/hypr/`, ours: `hyprland.lua` requires `monitors`, `input`, `looknfeel`, `rules`, `binds`, `autostart` | source of truth is [`../../config/hypr/`](../../config/README.md); the old Omarchy tree is kept at `~/.config/hypr.omarchy-2026-11-11` |
+| WM config | Lua in `~/.config/hypr/`, ours: `hyprland.lua` requires `monitors`, `input`, `looknfeel`, `rules`, `binds`, `autostart`; systemd user drop-ins for the GUI daemons | source of truth is [`../../config/`](../../config/README.md). No Omarchy config left on disk — its `hyprland.conf`/`bindings.conf` tree and the rollback copies were deleted after the first clean reboot |
 | Shell | waybar (workspaces, clock + date, wifi, volume) + fuzzel launcher + hyprpaper | [`../../config/`](../../config/README.md). No notification daemon, no OSD, no tray — deliberate |
 | GPU | RTX 3070 (`nvidia-open-dkms` 615.78.08) + Raphael iGPU `Radeon 610M` | NVIDIA is the render device |
 | Displays | `DP-2` 1920x1080@144 landscape at 0x0; `DP-1` 1920x1080@144 **portrait** (`transform=3`) at 1920x-190 | |

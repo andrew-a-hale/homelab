@@ -133,7 +133,7 @@ losing the rollback points.
 | Thing | Size | Why it stays |
 |---|---|---|
 | `~/.local/share/Steam` | 340G | Real games. `Path of Exile 2` alone is 145G, `Expedition 33` 44G, `Grim Dawn` 16G. Moving or pruning it is a user decision, not cleanup — see below |
-| `~/.config/hypr.omarchy-2026-11-11`, `~/.bashrc.omarchy-2026-11-11` | small | The user-level rollback. Held until the post-cleanup reboot proves the new config — `@home` is not snapshotted, so these are the only copy |
+
 | `~/.local/share/Trash` | 566M | Not mine to empty |
 | `~/.rustup` 2.8G, `~/go` 2.9G, `~/.cargo` 354M, `~/.local/share/NuGet` 443M | | Toolchains he actually uses (or used recently); deleting is not "cleanup" |
 | `~/.local/share/{nvim,opencode}` 1.9G + 1.2G | | Plugin/agent data, would re-download and lose state |

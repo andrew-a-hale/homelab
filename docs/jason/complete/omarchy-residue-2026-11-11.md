@@ -70,7 +70,8 @@ The rest:
 - `/etc/pacman.conf.omarchy-2026-11-11` — the backup of the removed repo block,
   referenced by a comment in `/etc/pacman.conf`.
 - `~/.config/hypr.omarchy-2026-11-11`, `~/.bashrc.omarchy-2026-11-11` — the
-  rollback copies, until the new config has held for a week.
+  rollback copies. **Deleted 2026-11-12**, after the reboot that proved the new
+  session (fstab, both ext4 mounts, wallpaper, bar, 58 binds, no failed units).
 - `/boot/a56d…/limine_history/omarchy_linux.efi_sha256_…` — the snapshot boot
   entry's copy of the old UKI. It is *content*, not configuration; renaming it
   would break snapshot 16's menu entry.

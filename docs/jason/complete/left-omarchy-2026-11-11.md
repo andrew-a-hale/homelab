@@ -26,7 +26,7 @@ Rollback: `snapper` snapshot 13 `pre-aur-limine` is the pre-change filesystem,
    `CUSTOM_UKI_NAME="omarchy"` were owned by `omarchy-settings`, so this file
    carries them. `zz-` prefix so it is read last.
 3. Desktop config copied into `~/.config` (`hypr`, `waybar`, `fuzzel`); the old
-   `~/.config/hypr` kept as `~/.config/hypr.omarchy-2026-11-11`.
+   `~/.config/hypr` kept as `~/.config/hypr.omarchy-2026-11-11` (deleted 2026-11-12 once the new config had survived a reboot).
 4. `hyprctl reload` — live test of the new config while Omarchy was still
    installed. Found and fixed: hyprpaper 0.8's new per-monitor `wallpaper { }`
    syntax, and `autostart.lua` starting a second waybar/hypridle/udiskie on
