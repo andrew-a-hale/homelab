@@ -7,7 +7,8 @@
 
 ## Jason Desktop
 
-- [ ] Leave Omarchy for plain Arch + Hyprland with only the apps actually used — spec (now evidence-backed): `docs/jason/todo/arch-desktop-spec.md`, plan: `docs/jason/todo/leave-omarchy.md`. Desktop config written: `config/` (verified against Hyprland 0.56.2)
+- [x] Leave Omarchy for plain Arch + Hyprland with only the apps actually used — done 2026-11-11: `docs/jason/complete/left-omarchy-2026-11-11.md` (one reboot to prove the stock kernel)
+- [ ] After that boot: drop `linux-omarchy` + its UKI (also re-enables snapshot boot entries), then move mise's node/uv/go/zig/julia/elixir/claude/codex/gh off mise so `mise-bin` can go — steps 2–3 of the same record
 - [x] Fill the gaps in `docs/jason/README.md` — decided 2026-11-11: `docs/jason/complete/what-jason-needs-2026-11-11.md`, keymap in `docs/jason/binds.md`
 
 ## Purchases

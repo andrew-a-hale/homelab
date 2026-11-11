@@ -30,10 +30,10 @@ boot entry points at.
    `CUSTOM_UKI_NAME="omarchy"` are in there. Removing the package would have
    silently dropped the boot stack back to non-UKI defaults with the OS entry
    renamed from `/etc/os-release`.
-   Fix: [`config/limine/50-jason.conf`](../../../config/limine/50-jason.conf),
-   deployed to `/etc/limine-entry-tool.d/50-jason.conf`. It sorts before
-   `omarchy-defaults.conf`, so nothing changed while Omarchy is still installed;
-   it takes over the moment that package goes.
+   Fix: [`config/limine/zz-jason.conf`](../../../config/limine/zz-jason.conf),
+   deployed to `/etc/limine-entry-tool.d/zz-jason.conf`. It was called `50-` at first so Omarchy's
+   file won; it is now `zz-` so it is read last and wins, which is what made the
+   switch to stock `linux` possible before the layer was removed.
 4. Verified with `limine-update`: the only difference in `/boot/limine.conf` was
    the two UKI hashes (rebuilt), so entry names, cmdline and structure are
    untouched — no duplicated kernel parameters from both files being read.

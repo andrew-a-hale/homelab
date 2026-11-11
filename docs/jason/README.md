@@ -1,8 +1,10 @@
 # Jason
 
 The desktop. Ryzen 5 7600X, 30G RAM, RTX 3070, MSI PRO B650-P WIFI, two LG
-UltraGear panels. Omarchy 4.5 on Arch, Wayland, Hyprland. Where the petcam
-detector is fine-tuned and the `amp --no-tui` runner lives.
+UltraGear panels. **Plain Arch**, Wayland, Hyprland, configured from
+[`config/`](../../config/README.md) — Omarchy was removed 2026-11-11
+([record](complete/left-omarchy-2026-11-11.md)). Where the petcam detector is
+fine-tuned and the `amp --no-tui` runner lives.
 
 Purpose of this file: **what this machine actually is and actually uses**, so a
 rebuild starts from evidence instead of guesses. Gaps to fill are at the bottom.
@@ -11,11 +13,11 @@ rebuild starts from evidence instead of guesses. Gaps to fill are at the bottom.
 
 | Layer | What | Why |
 |---|---|---|
-| Base OS | Arch + Omarchy 4.5 layer, 1475 packages / 265 explicit | being removed — [spec](todo/arch-desktop-spec.md), [plan](todo/leave-omarchy.md) |
+| Base OS | Arch, 1220 packages / 200 explicit | Omarchy layer gone 2026-11-11 — [record](complete/left-omarchy-2026-11-11.md) |
 | Kernel | `linux-omarchy` 7.2.15 (BORE + ADIOS); stock `linux` installed, unused | one reboot away from stock |
 | Session | sddm → `uwsm` → Hyprland 0.56.2 (Wayland) | |
-| WM config | Lua in `~/.config/hypr/`: `hyprland.lua` requires Omarchy's `default/hypr/omarchy.lua`, then `monitors`, `input`, `bindings`, `looknfeel`, `autostart` | personal files are 47/55/33/17/14 lines; the rest is Omarchy's 63 default files. The replacement is written and API-verified: [`../../config/hypr/`](../../config/README.md) |
-| Shell | Omarchy quickshell: bar, launcher, menu, OSD, notifications (`~/.config/omarchy/shell.toml`, only `font.base-size` set) | replaced by waybar + fuzzel, already written in [`../../config/`](../../config/README.md) — no notification daemon, no OSD |
+| WM config | Lua in `~/.config/hypr/`, ours: `hyprland.lua` requires `monitors`, `input`, `looknfeel`, `rules`, `binds`, `autostart` | source of truth is [`../../config/hypr/`](../../config/README.md); the old Omarchy tree is kept at `~/.config/hypr.omarchy-2026-11-11` |
+| Shell | waybar (workspaces, clock + date, wifi, volume) + fuzzel launcher + hyprpaper | [`../../config/`](../../config/README.md). No notification daemon, no OSD, no tray — deliberate |
 | GPU | RTX 3070 (`nvidia-open-dkms` 615.78.08) + Raphael iGPU `Radeon 610M` | NVIDIA is the render device |
 | Displays | `DP-2` 1920x1080@144 landscape at 0x0; `DP-1` 1920x1080@144 **portrait** (`transform=3`) at 1920x-190 | |
 | Disk | `nvme1n1` 930G: LUKS2 → btrfs `@ /`, `@home`, `@log`, `@pkg`; `/boot` 1G vfat | |
