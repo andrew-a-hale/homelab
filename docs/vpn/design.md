@@ -101,5 +101,6 @@ questions and should not share a switch.
 
 - Home exit ("browse from my home IP anywhere") → `tailscale up
   --advertise-exit-node` on tom. Free to add later; deliberately not built now.
-- If `vpn-soak` shows the daemon flapping tom's routes/DNS like it did on
-  jason → move the Proton connection into a netns for qBittorrent only.
+- If the daemon starts flapping tom's routes/DNS the way it did on jason
+  (soak logs in `complete/`), move the Proton connection into a netns for
+  qBittorrent only.

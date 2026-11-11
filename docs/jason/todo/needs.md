@@ -1,0 +1,312 @@
+# What Jason needs — the manual walkthrough
+
+Answers recorded here as we go, by hand, machine by machine. Evidence lives in
+[`docs/jason/README.md`](../README.md) (inventory) and
+[`arch-desktop-spec.md`](arch-desktop-spec.md) (install contract).
+
+Two rules:
+
+1. **Only what is written here survives the migration.** Nothing is assumed,
+   nothing is added "because it might be useful".
+2. **This is a record, not a migration.** Nothing on the box changes while we
+   go through it — no packages installed or removed, no config edited.
+
+Batches: **1 apps** → 2 the 53 unused packages → 3 web apps → 4 the five §7 picks
+(bar, launcher, notifications, OSD, theming) → 5 misc features.
+
+## Batch 1 — Omarchy-built apps (no Arch package: rebuild, AUR, or drop)
+
+| App | What it is | Replacement if dropped | Verdict |
+|---|---|---|---|
+| hype | Markdown presentation editor with visual slides | none (Keynote/PowerPoint exists) | **drop** |
+| omawrite | Dead-simple Qt Markdown writing app | VS Code / nvim | **drop** |
+| omasnap | Wayland screenshot + annotation overlay, save/copy/pin | see capture feature below | **drop** |
+| gliff | Remote-desktop a Hyprland session over ssh (VNC-ish, tabs per machine) | `ssh` + `tigervnc`/`wayvnc` | **drop** |
+| cliamp | Retro terminal music player (Winamp 2.x look) | `mpv`, or the YouTube Music webapp | **drop** |
+| monologue | Webcam recorder, theme-synced | `wf-recorder` / OBS | **drop** |
+| herdr | Terminal workspace manager for AI coding agents (`--machine`, `--remote`, sessions) | `tmux` + `ssh` | **KEEP** |
+| disktree-bin | Disk treemap, mark-and-delete | `ncdu` / `du` / `baobab` | **drop** |
+| ttfx | Terminal text effects toy | none | **drop** |
+
+Already decided (spec §6/§8): `aether` and `owe` drop (wallpaper theming),
+`omacut` `omacalc` `localsend` `tobi-try` `vortix` drop (unused).
+
+### herdr — the one rebuild
+
+Not in the AUR; upstream is `github.com/herdrdev/herdr`, a single Rust binary
+(sessions survive disconnect; `--machine`/`--remote` reach Tom and Ralph). The
+`[omarchy]` repo package `herdr` 0.9.1 additionally carries Omarchy's pane-border
+integration, which goes away with it. Rebuild with
+`cargo install --git https://github.com/herdrdev/herdr`, or a local PKGBUILD once
+it is on the box for real.
+
+### Screen capture — needed, tool not yet chosen
+
+Needed: region / window / monitor screenshot, annotate before it lands, copy to
+clipboard and save to disk. Normal Omarchy-free answer: `grim` + `slurp` +
+`satty` (in `extra`) + `wl-clipboard`, three binds. Recording is already covered:
+`gpu-screen-recorder` 6.1.4 is installed (ShadowPlay for the 3070). `wf-recorder`
+only if non-NVIDIA desktop capture is wanted too. What omasnap gave that this does
+not: the pin/preview overlay and its own editor.
+
+## Batch 2 — the 53 packages that ran nothing in 30 days
+
+Measured with `scripts/pacman-atime-audit.sh 30`, 0.7 GiB. "Unused" is evidence,
+not a verdict: plumbing is often never run directly.
+
+**Drop — nothing here uses them (30):** `flameshot` `ksnip` `hyprshot`
+(screenshots, covered by the capture feature), `alacritty` `glow` `sl`
+`caligula` `pinta` `imv`, then the never-touched stacks: `clojure`
+`leiningen-with-completion` `lua51` `luarocks` `or-tools` `python39` `v8-r` `z3`
+`boost` `terraform` `asdcontrol` `bluez-tools` `bluez-utils` `lazydocker`
+`system-config-printer` `exfatprogs` `inxi` `qt5-wayland` `libstrangle`
+`libcamera` `geckodriver`.
+
+**Keep — plumbing, never run directly (17):** `efibootmgr` `man-db` `unzip`
+`inetutils` `socat` `whois` `tldr` `qrencode` `wl-clip-persist` `brightnessctl`
+`alsa-utils` `pamixer` `fcitx5-gtk` `xdg-desktop-portal-hyprland`
+`gnome-disk-utility` `yt-dlp` `tesseract`.
+
+**Decided (5)** — defaults accepted:
+
+| Package | Verdict | Note |
+|---|---|---|
+| `obs-studio` | **drop** | `gpu-screen-recorder` covers clips |
+| `tigervnc` | **drop** | `SUPER + R` → Pi desktop goes with it |
+| `ffmpegthumbnailer` | **keep** | nautilus video thumbnails |
+| `tree-sitter-cli` | **keep** | nvim parser builds |
+| `exfatprogs`, `inxi` | **drop** | exFAT formatting, hardware report |
+
+## Batch 3 — web apps: none
+
+Decided: **no web apps at all, everything is a browser tab.** All 12
+`.desktop` files go, and the binds that opened them: `SUPER+Y` (YouTube),
+`SUPER+M` (YouTube Music), `SUPER+SHIFT+S` (Steam store), `SUPER+D` (Discord web
+in firefox). `SUPER+B` / `SUPER+SHIFT+B` stay — they launch the browser.
+
+History that justified it: five of the twelve had never been opened on this box
+(Google Contacts/Messages/Photos, WhatsApp, Figma), Basecamp and HEY were last
+seen in February, Google Maps in August. The three sites actually visited daily
+side (YouTube, GitHub, X, Twitch, Reddit, YouTube Music) are tabs — which is
+exactly what you said: browser, not apps.
+
+## Batch 4 — the five §7 picks
+
+| # | Question | Answer |
+|---|---|---|
+| 1 | Bar | **yes — waybar**: workspace indicator, clock + date, wifi, volume |
+| 2 | Launcher | **yes — fuzzel** |
+| 3 | Notifications | **none for now** — see the evidence below; mako added later only if a missed ping annoys |
+| 4 | Volume/brightness OSD | **none** — volume is on the bar, keys stay silent |
+| 5 | Theming | **yes, but deferred**: ship the default (static dark) look, add wallpaper-derived theming later only if the defaults annoy |
+
+Consequences to carry into the spec: waybar replaces the quickshell bar (so
+`workspace` indicator, clock, wifi, volume, tray all live there); no notification
+daemon means scripts and apps have nowhere to notify — anything that must say
+something prints to the terminal or the bar; fuzzel needs one bind
+(`SUPER + SPACE`, the bind Omarchy uses for its menu) and a keys list; fonts
+already there (JetBrains Mono Nerd, Noto incl. CJK/emoji) cover waybar + fuzzel.
+
+### Do notifications need a daemon? — the evidence
+
+`~/.local/state/omarchy/notifications/history.json` holds every notification this
+session ever showed: **19 entries**. Eighteen are Omarchy talking about itself
+("Workspace layout set to tiling", …) and disappear with Omarchy. The only real
+one: a Vesktop Discord message.
+
+What will actually call `org.freedesktop.Notifications` on the new desktop:
+
+| Source | Example |
+|---|---|
+| vesktop / discord | DM or mention while you are in another window or fullscreen |
+| signal-desktop | inbound message |
+| steam | download complete, friend message |
+| your own scripts | `notify-send` (e.g. a health check) — none exist today |
+
+With no daemon those calls fail quietly: Steam logs an error, Discord/Discord-like
+apps just show nothing until you look at them. Waybar's tray still shows their
+icons, so an unread count on the icon is the fallback. Cost of adding `mako`:
+one config file, one process.
+
+Verdict: skip it. Add `mako` the first time a missed DM costs you something.
+
+## Batch 5 — leftover features, decided
+
+| # | Feature | Verdict |
+|---|---|---|
+| 1 | Clipboard history | **drop** — plain clipboard: `wl-clipboard` + `wl-clip-persist`, no `cliphist`, no picker bind |
+| 2 | Emoji picker | **drop** |
+| 3 | Screen-share picker | **keep** — `hyprland-preview-share-picker` |
+| 4 | Dictation / webcam relay | **drop** (`voxtype`, `v4l2-relayd`, `tensaku`) |
+| 5 | Night light | **drop** — `hyprsunset` out |
+| 6 | Idle → lock | **keep** — `hypridle` lock at 150s, display off at 152s, `hyprlock` |
+| 7 | Wallpaper | **`hyprpaper`**, static. Video wallpapers go with `owe` |
+| 8 | Dock | **drop** (explained below), which also means no window-minimise |
+| 9 | Brightness | **none** |
+| 10 | Screen capture | **`satty`** (stills, annotate) + **`gpu-screen-recorder`** (video), one family of binds |
+| 11 | Keybind cheatsheet | **drop** |
+| 12 | Bluetooth | **drop** — no paired devices, `bluez` stack out entirely |
+
+### Webcam must keep working
+
+Dropping the dictation stack is unrelated to the camera: Google Meet (browser) and
+vesktop/Discord need `/dev/video*` through the **camera** portal
+(`org.freedesktop.portal.Camera`, `xdg-desktop-portal` + the hyprland backend),
+and Chromium only uses a camera via that portal under Wayland. So `xdg-desktop-portal`
+and `xdg-desktop-portal-hyprland` stay, and "camera in Chromium" is a thing to
+verify on the new desktop, not a package to add.
+
+### Screen capture: stills and video in one tool
+
+No good single tool does annotated stills *and* video. The honest split that feels
+like one tool: `satty` (annotate, copy, save) for stills and the already-installed
+`gpu-screen-recorder` for video, both behind `SUPER+PRINT`-family binds. If one app
+is really wanted, that is `obs-studio` — re-added from the batch 2 drop, with studio
+mode for both.
+
+### What the dock is (and why it is dropped)
+
+Omarchy's dock is a panel of running-app icons, macOS-style, that appears only on
+floating workspaces: click to focus, click to minimise, click to restore. On tiled
+workspaces it is hidden. With waybar showing windows/workspaces and every app on a
+bind, it buys nothing — and its minimise button has no meaning without the dock, so
+`omarchy-hyprland-window-minimize` (and therefore hyprbars' buttons) go too.
+
+## Batch 6 — the keymap → [`docs/jason/binds.md`](../binds.md)
+
+The keymap now lives in [`docs/jason/binds.md`](../binds.md) and is edited
+by hand there. The curated proposal it started from, for history:
+
+Omarchy binds ~130 keys; most are menus, panels, webapps and other furniture that
+is being dropped. This is the proposed replacement list, curated from what is
+actually reachable today. Everything else is absent, not unbound.
+
+**Windows** — `SUPER+arrows` focus, `SUPER+SHIFT+arrows` swap,
+`SUPER+minus/equal` resize (with `CTRL` for big steps), `SUPER+SHIFT+F` fullscreen,
+`SUPER+T` float this window, `SUPER+J` split, `SUPER+P` pseudo, `SUPER+G` group,
+`SUPER+LEFT/RIGHT MOUSE` move/resize, `SUPER+W`|`SUPER+Q` close.
+
+**Workspaces** — `SUPER+1..0` switch, `SUPER+SHIFT+1..0` move window,
+`SUPER+TAB`/`SUPER+SHIFT+TAB` next/prev, `SUPER+SHIFT+ALT+arrows` move workspace to
+monitor, **`SUPER+L` toggle workspace tiling ↔ floating** (§2.1).
+
+**Apps** — `SUPER+RETURN` ghostty, `SUPER+SHIFT+RETURN` browser (chromium),
+`SUPER+B` chromium, `SUPER+SHIFT+B` chromium Profile 4, `SUPER+ALT+RETURN` tmux,
+`SUPER+CTRL+RETURN` herdr, `SUPER+F` nautilus, `SUPER+N` nvim, `SUPER+A` btop,
+`SUPER+SHIFT+D` vesktop, `SUPER+S` steam, `SUPER+I` input language (fcitx5),
+**`SUPER+SPACE` fuzzel**.
+
+**Capture** — `PRINT` region → satty annotate, `SHIFT+PRINT` whole monitor,
+`ALT+PRINT` gpu-screen-recorder start/stop.
+
+**System** — `SUPER+CTRL+L` lock, `SUPER+ESCAPE` power/fuzzel menu
+(lock / logout / reboot / shutdown), XF86 volume + mute keys, XF86 media keys.
+
+**Dropped with Omarchy** (worth naming so nothing is missed): the menu and panels
+(`SUPER+SPACE` old menu, `SUPER+CTRL+A/N/D/P/C/H`, bar panels 1–9),
+notifications keys, webapp keys (`SUPER+M`, `SUPER+Y`, `SUPER+SHIFT+S`, `SUPER+D`,
+`SUPER+SHIFT+A`, `SUPER+SHIFT+ALT+A/G/E`), `SUPER+R` VNC, scratchpad and Quake
+console keys, `SUPER+M` minimise-to-dock, transparency/aspect/width keys,
+`SUPER+CTRL+F` tiled fullscreen, `SUPER+ALT+L` layout cycle, `SUPER+K` keybindings,
+`CTRL+ALT+DELETE` close-all, OCR and colour-picker binds, share/download-url keys,
+the 42 `hw-*` helpers' keys.
+
+### Open questions for this batch
+
+- `SUPER+ESCAPE` power menu: keep (a 6-line fuzzel script) or drop it and reboot
+  from a terminal?
+- `SUPER+O` pop-out (float + pin on all workspaces) and `SUPER+SHIFT+ALT+B` private
+  browser: keep either?
+
+## Batch 7 — the two disks, and the backup (evidence, not guesses)
+
+**`/mnt/games`** — `nvme0n1p2`, 233G NTFS, **7.4G used**:
+`World of Warcraft` 6.7G + `WowUp-2.22.0.AppImage` 121M. **The Steam library is not
+here** — `libraryfolders.vdf` lists only `/home/andy/.local/share/Steam`, 263G of
+games on the btrfs root (473G used of 931G, 457G free). So the whole NTFS games disk
+exists for one Windows-era game.
+
+**`/mnt/storage`** — `sda1`, 1.9T NTFS, **681M used**: `backup/` with `Andrew/`,
+`callum-backup/`, `Photos/` (416M). Nearly empty, and NTFS cannot hold POSIX
+permissions, symlinks or case-sensitive names — wrong filesystem for a backup target
+that a Linux machine writes to.
+
+### Answers
+
+1. **WoW moves onto btrfs** (`~/Games`, Exec allowed — no NTFS exec workaround), and
+   **the `/mnt/games` mount goes away**. `nvme0n1p2` stays as manual-mount spare
+   NTFS storage; wiping it is not part of this migration.
+2. **`sda` / `/mnt/storage` gets reformatted.** Its 681M is already in Proton Drive,
+   so nothing on it is unique — no copy step needed. Same for `nvme0n1`: WoW can go,
+   the whole disk becomes free (233G, and its 16M "Microsoft reserved" partition with
+   it). Both are done **during** the migration, never before.
+3. **Dotfiles live in the repo** next to this file: `docs/jason/files/`. **No
+   credentials** — no SSH keys, no tokens, no passwords, nothing from Proton Pass.
+   Hypr/waybar/fuzzel/hyprpaper config only.
+
+### Why reformat `/mnt/storage` at all
+
+NTFS on Linux cannot store POSIX permissions, symlinks, hardlinks or case-sensitive
+names, and ownership comes from mount options (`uid=`, `gid=`), not from the files.
+For a **backup target written by Linux** that means: `rsync -a` silently drops
+ownership and breaks symlinks, `tar` cannot restore them, and no snapshot tool can
+use it. It also cannot hold reflinks/checksums the way btrfs can.
+
+The counter-case is real: if that disk ever goes back into a Windows machine, or
+holds Windows-era data someone else uses (`callum-backup`), NTFS is the right
+filesystem and a read-only mount is the safe answer.
+
+Answer for this box: nothing else reads it — the contents are in Proton Drive and the
+Windows-era data is gone. So the disk is free to be reformatted into a Linux
+filesystem, and the honest trade-off below is only about what it is *for*.
+
+### What the two freed disks should be
+
+| Disk | Now | After |
+|---|---|---|
+| `sda` 2TB HDD (WD20EARX, 2011) | NTFS `/mnt/storage`, 681M of old backups | one `ext4` partition, mounted `/mnt/storage`, a Linux-writable archive/backup target |
+| `nvme0n1` 233G | NTFS `/mnt/games`, WoW 7.4G, 16M MS-reserved partition | one `ext4` partition, no WoW, no Windows layout; `/mnt/games` mount gone |
+
+Filesystem: `ext4` for both — nothing here needs btrfs snapshots or `send/receive`,
+and one filesystem concept on the box is worth more than reflinks. The 14-year-old
+HDD is cold-archive material only; anything written live belongs on the NVMe.
+
+Both disks are wiped to `ext4` as part of the migration and then **mounted empty**.
+No plans for either yet — decision deferred, nothing depends on it:
+
+1. The 233G NVMe: Steam library (263G currently on the root) or scratch. Either way
+   it stays `ext4`, empty, until something needs it.
+2. `sda`, the 2TB HDD: local `restic`/`borg` target, or cold storage that sits
+   unused. Proton Drive already covers what is on it today.
+
+## Late calls (after the walkthrough)
+
+| Package | Verdict | Why |
+|---|---|---|
+| `discord` (official client) | **drop** | nothing requires it (`Required By: None`, `Optional For: None`); `vesktop` is a separate Electron app that depends only on `alsa-lib gtk3 nss`, so Vencord/Vesktop does not need it. Vesktop was the one running (pid 356932); `discord`'s binary last ran 2026-11-08 and the `Discord.desktop` webapp was already dropped in batch 3 |
+| `xournalpp` | **open** | handwriting/PDF-annotation app, 8 MB; opened 2026-10-21, no `.xopp` file anywhere, and no tablet/stylus in `/dev/input/by-id/` |
+| `mise-bin` | **drop** (confirmed) | not wanted as an installer: the agent CLIs (`amp`, `opencode`, `pi`, `playwright`, `claude`, `codex`) go in via `npm -g` on `extra/nodejs`; `uv` from `extra/uv`. The `[omarchy]` repo is out too — sources for everything still wanted are tabulated in [`../whitelist.md`](../whitelist.md) |
+| `kdenlive` | **open** | video editor, 94 MB; opened 2026-11-08, `~/Videos` empty, no `.kdenlive` project anywhere; `gpu-screen-recorder` covers capture, not editing |
+
+## Kernel: `linux` instead of `linux-omarchy`
+
+Yes, and it costs almost nothing — everything needed is already on the box:
+
+| Fact | Evidence |
+|---|---|
+| stock kernel installed | `linux` 7.2.11.arch1-1 + `linux-headers` (running 7.2.15-1-omarchy) |
+| its UKI already built | `/boot/EFI/Linux/omarchy_linux.efi` (284 MB) |
+| its boot entry already exists | `limine.conf` → `//linux`, "Kernel version: 7.2.11-arch1-1", same `cryptdevice` cmdline |
+| NVIDIA module already built for it | `dkms status` → `nvidia/615.78.08, 7.2.11-arch1-1: installed` |
+
+So the switch is: boot the `linux` entry, confirm the 3070 comes up (`nvidia-smi`),
+then `pacman -Rns linux-omarchy linux-omarchy-headers`. Losing BORE/ADIOS scheduling
+is the only real difference; for a gaming desktop the effect is small and stock
+EEVDF is what everything is tested against.
+
+**One trap, and it is a trap:** the thing that builds those UKIs and the Limine
+entries is `limine-mkinitcpio-hook` (plus `limine-snapper-sync`), and they exist
+**only in the `[omarchy]` repo** — `extra` has just `limine` itself. Remove the repo
+before replacing them and the next kernel update installs a kernel with no bootable
+entry. Both are in the AUR at the same versions (1.40.0, 1.32.1). Order matters:
+AUR versions first, then remove `[omarchy]`.

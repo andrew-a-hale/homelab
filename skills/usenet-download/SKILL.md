@@ -189,16 +189,25 @@ A failed `mv` mid-loop leaves the first episode already renamed — the loop is
 idempotent for the rest, just fix the missing one by hand.
 
 **Library layout after unpack.** The job name (derived from the post subject)
-becomes the folder directly under `tv/` or `movies/`. Jellyfin wants
-`tv/<Show Name (Year)>/Season 01/<file SxxEyy>.mkv` and
-`movies/<Movie Name (Year)>/<file>.mkv`. Loose files and odd folder names often
-still match by filename, but a tidy-up is cheap:
+becomes the folder directly under `tv/` or `movies/` — so each finished episode
+lands in its own folder, and Jellyfin reads every one of those folders as a
+*separate series* with the wrong show, wrong year and one episode. Always tidy
+before believing anything the library says:
 
 ```bash
-ssh ralph 'ls /srv/media/tv /srv/media/movies'
-# then, per show (sudo — the job dirs are nzbget-owned, plain mv gives Permission denied):
-ssh ralph 'sudo mv "/srv/media/tv/<job folder>" "/srv/media/tv/Gurren Lagann (2007)"; sudo mkdir -p "/srv/media/tv/Gurren Lagann (2007)/Season 01"; sudo mv /srv/media/tv/Gurren\ Lagann\ \(2007\)/*.mkv "/srv/media/tv/Gurren Lagann (2007)/Season 01/"'
-ssh ralph 'sudo chown -R nzbget:jellyfin …; sudo chmod -R 775 …'   # keep Jellyfin able to read
+./scripts/nzb-tidy.sh --dry-run      # what would move
+./scripts/nzb-tidy.sh                # every series folder with a year in its name
+./scripts/nzb-tidy.sh "Avatar - The Last Airbender (2005)"   # or one show
+```
+
+It files each `SxxEyy` video as `tv/<Show (Year)>/Season NN/<Show> - SxxEyy.mkv`,
+fixes ownership, and drops the emptied job dir. A show's folder must exist first:
+create `tv/<Show Name (Year)>` (name and year from TMDB) if this is a new show —
+the year is what stops Jellyfin matching the 2024 live-action Avatar instead of
+the 2005 animation. Movies have no `SxxEyy`; file them by hand:
+
+```bash
+ssh ralph 'sudo mv "/srv/media/movies/<job folder>/<file>.mkv" "/srv/media/movies/<Movie Name (Year)>/"; sudo chown -R nzbget:jellyfin "/srv/media/movies/<Movie Name (Year)"'
 ```
 
 **ssh ralph really is the transport.** NZBGet has no LAN listener; do not open

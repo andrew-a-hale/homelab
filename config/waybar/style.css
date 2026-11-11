@@ -1,0 +1,49 @@
+/* Flat dark bar, accent #7aa2f7 to match the window border in looknfeel.lua. */
+* {
+  font-family: "JetBrainsMono Nerd Font", "JetBrainsMono NF", monospace;
+  font-size: 12px;
+  min-height: 0;
+}
+
+window#waybar {
+  background: #1a1b26;
+  color: #c0caf5;
+  border: none;
+}
+
+#workspaces button {
+  padding: 0 8px;
+  color: #565f89;
+  background: transparent;
+  border: none;
+}
+
+#workspaces button.active {
+  color: #1a1b26;
+  background: #7aa2f7;
+}
+
+#workspaces button.urgent {
+  color: #1a1b26;
+  background: #f7768e;
+}
+
+#clock,
+#network,
+#pulseaudio {
+  padding: 0 10px;
+  color: #c0caf5;
+}
+
+#network.disconnected {
+  color: #f7768e;
+}
+
+#pulseaudio.muted {
+  color: #565f89;
+}
+
+menu {
+  background: #1a1b26;
+  border: 1px solid #7aa2f7;
+}

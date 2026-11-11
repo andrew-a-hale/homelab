@@ -21,9 +21,10 @@ everything through a VPN; it uses each where it earns its place.
 | `vpn status` | `protonvpn status` + public IP |
 
 `vpn any` verifies end-to-end and exits non-zero with a fix hint (route checks can
-pass while DNS/traffic is dead). `vpn-soak [minutes] [modes…]` cycles modes and
-probes every 5 s, logging to `~/vpn-soak-<ts>.log`. Phones/tablets: the Proton
-app is the whole story.
+pass while DNS/traffic is dead). The soak harness that produced the measurements
+(`scripts/vpn-soak`, cycling modes with 5 s probes) did its job and was deleted
+2026-11-11 — see the complete/ docs for its output. Phones/tablets: the Proton app
+is the whole story.
 
 **Ralph** — `wg-quick@proton0` with `/etc/wireguard/proton0.conf` (secret, not in
 this repo), plus `proton-guard.timer` every 5 min running `scripts/proton-guard.sh`

@@ -59,9 +59,31 @@ the install decisions: [`complete/nzbget-parallel-2026-11-09.md`](complete/nzbge
 | Indexer | **NZBGeek**, lifetime sub, API key in `pass show homelab/nzbgeek/apikey`. Free fallbacks `--binsearch` (`binsearch.info`) and `--nzbking` (`nzbking.com`; `nzbindex.com` is client-rendered and useless for `?q=`). Geek finds re-ups the free indexers miss, which is what unblocked Avatar: The Last Airbender |
 | Search | `scripts/nzb-dl.sh` — `search "query"` (NZBGeek by default), `add <id> Series|Movies`, `status`, `history`, `remove <job>`; pushes through jsonrpc over `ssh ralph`, because the WebUI is loopback-only. Edge cases and the manual fallback: `skills/usenet-download/SKILL.md` and [`complete/nzb-automation-2026-11-09.md`](complete/nzb-automation-2026-11-09.md) |
 | Provider | **XS News**, configured 2026-11-09: `Server1.Host=reader.xsnews.nl`, `Port=563`, `Encryption=yes`, `Connections=20`, `Level=0`, `Active=yes`. Account login in `pass` (`homelab/xsnews/username`, `homelab/xsnews/password`) and the config copy is `/var/lib/nzbget/nzbget.conf` (600, `nzbget:nzbget`). Connections verified by NZBGet's article-availability check, not just by a TCP connect |
+| Library layout | `scripts/nzb-tidy.sh` — NZBGet unpacks each job into a folder named after the release, so a finished episode lands as `tv/Avatar.The.Last.Airbender.S01E01…par2_ yEnc (1-28)/` and Jellyfin reads that as its own series. Run `./scripts/nzb-tidy.sh` after jobs finish; it files `SxxEyy` videos into `tv/<Show (Year)>/Season NN/` and deletes the emptied job dir (`complete/avatar-korra-metadata-2026-11-10.md`) |
 
 No VPN involvement, and nothing to bind: the protocol is TLS to one paid server,
 so `proton0` stays qBittorrent's problem only.
+
+### Library layout after a usenet job
+
+NZBGet's category `DestDir` gets a folder named after the post subject appended,
+so a single-episode NZB becomes one junk folder per episode under `tv/`, and
+Jellyfin turns **each of those into a separate series**: one series per episode,
+and `Avatar: The Last Airbender` matched to the 2024 live-action show instead of
+the 2005 animation. Nothing else is wrong with the files.
+
+`scripts/nzb-tidy.sh` fixes it, and is the only step needed after downloads:
+
+```bash
+./scripts/nzb-tidy.sh --dry-run    # list what would move
+./scripts/nzb-tidy.sh              # tidy every "… (YYYY)" folder in the library
+```
+
+It moves every video with an `SxxEyy` tag into `tv/<Show (Year)>/Season NN/<Show> - SxxEyy.mkv`,
+`chown nzbget:jellyfin`, and removes the emptied job folder; Jellyfin then scans
+the new paths within ~30 min (or `sudo systemctl restart jellyfin`). The show
+folder has to exist first, name and year from TMDB — the year is load-bearing
+here, it is what picks the 2005 Avatar over the 2024 one.
 
 ## TV
 

@@ -36,7 +36,7 @@ printf '%s %s %s\n' "$(hostname)" "$(uname -m)" "$(. /etc/os-release; echo "$PRE
 
 - SSH aliases land elsewhere: `tom` (`tom.tailad1015.ts.net`, user `tom`), `tom-lan` (`192.168.1.24`), `ralph` (`ralph.tailad1015.ts.net`, user `andy`). Commands run there act on that host, not on the session's host.
 - If `hostname` is none of the four, it is an unrecorded machine: stop and ask, do not guess.
-- Per-machine detail: `docs/ralph/README.md`, `docs/server/README.md` (Tom), `docs/petcam/README.md`.
+- Per-machine detail: `docs/jason/README.md`, `docs/ralph/README.md`, `docs/server/README.md` (Tom), `docs/petcam/README.md`.
 
 All machines are on the same network and have an internet speed of at most 100mbit down/25mbit up.
 

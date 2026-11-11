@@ -1,0 +1,14 @@
+[Unit]
+Description=Documents sync to Proton Drive (official CLI)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/andy/services/protondrive-documents.sh
+Restart=always
+RestartSec=300
+User=andy
+Group=andy
+
+[Install]
+WantedBy=multi-user.target

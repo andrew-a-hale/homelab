@@ -1,5 +1,10 @@
 # Tom: hard hangs / restarts (2026-10-31)
 
+> **2026-11-11:** `scripts/tom-trace.sh` and `scripts/tom-watch-remote.sh` were
+> deleted as not required, along with their cron entries on Tom. `scripts/tom-kmsg.sh`
+> and ramoops remain the instrumentation this document relies on; the runbook steps
+> below that reference the two deleted scripts no longer apply.
+
 **Date opened:** 2026-10-31
 **Status:** open — **cause identified 2026-11-08 from the first captured crash dump**: a
 hard lockup on **CPU 3 in the RP1 I2C / imx708 camera path**. Not fixed; ~12 resets/day

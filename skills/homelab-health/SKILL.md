@@ -68,9 +68,10 @@ grep -v 'tom=ok' ~/homelab-health.log      # every run Tom was unhealthy
 
 1. **`boots/24h` WARN on Tom, `boot` uptime minutes** — Tom is hard-resetting
    itself again. Read `docs/server/todo/tom-reboots-hang-2026-10-31.md`: cause is
-   still open (~1 reset/hour when live), capture instrumentation is in place
-   (`scripts/tom-trace.sh`, `scripts/tom-kmsg.sh`, ramoops), remaining fix is
-   physical (camera ribbon reseat / PSU). Do not "fix" it by disabling the
+   still open (~1 reset/hour when live), capture instrumentation is what is left:
+   `scripts/tom-kmsg.sh` on Tom plus ramoops (`tom-trace.sh` and the outside-in
+   watcher were deleted 2026-11-11 as not required). Remaining fix is physical
+   (camera ribbon reseat / PSU). Do not "fix" it by disabling the
    hardware watchdog — that turns a reboot into a hang.
 2. **`frames` WARN or `capture` FAIL** — the petcam stream is dead. Follow
    `docs/petcam/README.md` §Verify: `ssh ralph 'curl -s http://127.0.0.1:8082/shots.json'`,

@@ -1,0 +1,46 @@
+// waybar — workspace indicator, clock + date, wifi, volume. Nothing else:
+// docs/jason/needs.md batch 5 cut the tray, the OSD, panels and the menus.
+{
+  "layer": "top",
+  "position": "top",
+  "height": 30,
+  "spacing": 10,
+  "margin-top": 0,
+
+  "modules-left": ["hyprland/workspaces"],
+  "modules-center": ["clock"],
+  "modules-right": ["network", "pulseaudio"],
+
+  "hyprland/workspaces": {
+    "format": "{name}",
+    "on-click": "activate",
+    "sort-by-number": true
+  },
+
+  "clock": {
+    "format": "{:%a %d %b  %H:%M}",
+    "tooltip-format": "<tt>{calendar}</tt>",
+    "calendar": {
+      "mode": "month",
+      "format": {
+        "today": "<b><span color='#7aa2f7'>{}</span></b>"
+      }
+    }
+  },
+
+  "network": {
+    "format-wifi": "  {essid}",
+    "format-ethernet": "  {ifname}",
+    "format-disconnected": " offline",
+    "tooltip-format": "{ifname}: {ipaddr}/{cidr}",
+    "on-click": "ghostty -e nmtui"
+  },
+
+  "pulseaudio": {
+    "format": "{icon} {volume}%",
+    "format-muted": " muted",
+    "format-icons": ["", "", ""],
+    "scroll-step": 5,
+    "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+  }
+}

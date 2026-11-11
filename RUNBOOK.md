@@ -90,7 +90,10 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
   the provider password). Listens `127.0.0.1:6789` only; `/nzb/` gets the same
   basic auth + `CF-Ray` guard as `/bt/`. Downloads land in
   `/srv/media/downloads`, completed jobs go straight to `/srv/media/movies`,
-  `/srv/media/tv` (categories `Movies`, `Series`; `AppendCategoryDir=no`). Needs
+  `/srv/media/tv` (categories `Movies`, `Series`; `AppendCategoryDir=no`), each
+  job in its own release-named folder — run
+  [`scripts/nzb-tidy.sh`](scripts/nzb-tidy.sh) after a batch, or Jellyfin reads
+  every one of those folders as a separate series. Needs
   `par2cmdline`, `unrar`, `7zip` for verify/unpack. `Server1.*` stays
   `Active=no` until a provider account exists — with no server configured it
   logs `No servers are configured` and sits idle, which is harmless. Provider
