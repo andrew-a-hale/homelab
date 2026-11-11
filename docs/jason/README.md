@@ -13,14 +13,14 @@ rebuild starts from evidence instead of guesses. Gaps to fill are at the bottom.
 
 | Layer | What | Why |
 |---|---|---|
-| Base OS | Arch, 1215 packages / 197 explicit | Omarchy layer gone 2026-11-11 — [record](complete/left-omarchy-2026-11-11.md); [sweep](complete/post-cutover-sweep-2026-11-11.md) |
+| Base OS | Arch, 1215 packages / 197 explicit | Omarchy layer gone 2026-11-11 — [record](complete/left-omarchy-2026-11-11.md); [kernel/mise/disks](complete/post-cutover-sweep-2026-11-11.md); [space](complete/space-reclaim-2026-11-11.md) |
 | Kernel | stock `linux` 7.2.11-arch1-1 | `linux-omarchy` removed 2026-11-11 once this booted — [sweep](complete/post-cutover-sweep-2026-11-11.md) |
 | Session | sddm → `uwsm` → Hyprland 0.56.2 (Wayland) | |
 | WM config | Lua in `~/.config/hypr/`, ours: `hyprland.lua` requires `monitors`, `input`, `looknfeel`, `rules`, `binds`, `autostart` | source of truth is [`../../config/hypr/`](../../config/README.md); the old Omarchy tree is kept at `~/.config/hypr.omarchy-2026-11-11` |
 | Shell | waybar (workspaces, clock + date, wifi, volume) + fuzzel launcher + hyprpaper | [`../../config/`](../../config/README.md). No notification daemon, no OSD, no tray — deliberate |
 | GPU | RTX 3070 (`nvidia-open-dkms` 615.78.08) + Raphael iGPU `Radeon 610M` | NVIDIA is the render device |
 | Displays | `DP-2` 1920x1080@144 landscape at 0x0; `DP-1` 1920x1080@144 **portrait** (`transform=3`) at 1920x-190 | |
-| Disk | `nvme1n1` 930G: LUKS2 → btrfs `@ /`, `@home`, `@log`, `@pkg`; `/boot` 1G vfat | |
+| Disk | `nvme0n1` 930G: LUKS2 → btrfs `@ /`, `@home`, `@log`, `@pkg`; `/boot` 1G vfat. 431G used, 340G of it Steam | games live on the same btrfs — see the decision at the end of [space reclaim](complete/space-reclaim-2026-11-11.md) |
 | Other disks | `nvme1n1p2` 229G ext4 `games` → `/mnt/games`; `sda1` 1.8T ext4 `storage` → `/mnt/storage`; `zram0` 30G swap | both wiped from NTFS on 2026-11-11 |
 | Boot | Limine 12.9.4 + snapper 0.13.2 + limine-snapper-sync (both limine tools AUR-owned, not `[omarchy]`), `sbctl` secure boot; `/etc/limine-entry-tool.d/zz-jason.conf` carries the UKI settings `omarchy-settings` used to own | entries auto-generated. One kernel, one **snapshot entry** (the menu shows `Snapshots → 16`): `/boot` is 53% of 1G because each snapshot entry copies the 267M UKI, so the cap is 1 and `LIMIT_USAGE_PERCENT=70` lives in `/etc/default/limine`, **not** the `d/` directory |
 | Access | tailnet `jason` = `100.95.54.82`; SSH identity from the tailnet | |

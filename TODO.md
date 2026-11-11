@@ -9,6 +9,8 @@
 
 - [x] Leave Omarchy for plain Arch + Hyprland with only the apps actually used — done 2026-11-11: `docs/jason/complete/left-omarchy-2026-11-11.md` (one reboot to prove the stock kernel)
 - [x] After that boot: dropped `linux-omarchy` + its UKI (snapshot boot entries now work — one, capped by UKI size), retired `mise-bin` for npm/pacman equivalents, and wiped both data disks to ext4 — 2026-11-11: `docs/jason/complete/post-cutover-sweep-2026-11-11.md`
+- [ ] Decide what to do with 340G of Steam (`common` 263G, `compatdata` 69G): uninstall unplayed, or add `/mnt/storage` as a second library — `docs/jason/complete/space-reclaim-2026-11-11.md`
+- [ ] Reboot once more to prove the new `/etc/fstab` (two ext4 volumes) and the snapshot boot entry survive a cold boot
 - [x] Fill the gaps in `docs/jason/README.md` — decided 2026-11-11: `docs/jason/complete/what-jason-needs-2026-11-11.md`, keymap in `docs/jason/binds.md`
 
 ## Purchases
