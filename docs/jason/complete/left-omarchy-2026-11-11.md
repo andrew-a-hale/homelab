@@ -70,6 +70,18 @@ waybar's `persistent-workspaces` does not fill in the missing 2–5, 8–10: on
 0.15.0 `{"DP-2": 10}` produced workspaces 21–30 and `{"*": 10}` created nothing,
 so the option was dropped rather than shipped broken.
 
+## NFS export retired (2026-11-11, same day)
+
+`/etc/exports` served `/mnt/storage` to Tom and `nfs-server.service` was enabled.
+Tom is a capture-only camera appliance: no crontab entry, no script under
+`/home/tom`, nothing reads the mount (`ls -A /mnt/storage` on the Pi shows only
+Jason's `backup` directory, seen over NFS). Ralph never mounted it.
+
+Removed: export entry (backup at `/etc/exports.bak-2026-11-11`), `exportfs -ra`,
+`systemctl disable --now nfs-server` — port 2049 is closed. Tom's own mount is
+still in its fstab and needs unmounting on the Pi with a password; the exact
+commands are in [`../services.md`](../services.md).
+
 ## Still to do after the reboot
 
 1. Boot `//linux`; if it fails, `//linux-omarchy` is still there (menu timeout is

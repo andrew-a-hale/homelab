@@ -23,7 +23,7 @@ only cron job in the house is on Ralph, not here).
 | `shadow.timer` | daily | account ageing | keep |
 | `homelab-health.timer` (**user**, `~/.config/systemd/user/`) | `*-*-* 08:00:00`, `Persistent=true` | `scripts/homelab-health.sh` from this repo | **keep** — it is yours |
 
-### Trap: two things read `/mnt/storage`
+### `/mnt/storage`
 
 1. `protondrive-weekly.sh` uploads `/mnt/storage/backup`. Reformat that disk without
    touching the script and the weekly backup starts failing silently-ish (it will
@@ -49,7 +49,7 @@ Both are one-line changes, but they belong in the migration checklist, not in
 | `docker.socket` | containers on demand | keep |
 | `snapper-cleanup.timer`, `limine-snapper-sync.service` (+ `limine-snapper-watcher`) | snapshots and their boot entries | keep — **AUR** packages, see `whitelist.md` |
 | `linux-modules-cleanup.service` (`kernel-modules-hook`) | drops module trees for removed kernels | keep |
-| `nfs-server.service` | exports `/mnt/storage` to Tom | keep — path changes with the reformat |
+| `nfs-server.service` | exported `/mnt/storage` to Tom | **dropped 2026-11-11** — nothing consumes it |
 | `power-profiles-daemon` | power profiles | keep |
 | `getty@.service` | a real TTY when the GUI is dead | keep |
 | `avahi-daemon` (+ socket) | `.local` name resolution via `nss-mdns` | keep — free, and name resolution is the sort of thing you want when debugging |
@@ -115,5 +115,18 @@ from `PASSWORD_STORE_DIR=/home/andy/.password-store-proton`, and the repo is pub
 12 system units kept (4 of them with migration caveats), 2 dropped; 7 user units
 kept, 6 dropped with a named replacement or nothing; 8 timers kept, 0 dropped; no
 cron anywhere. The two things that must be handled *during* the migration, not after:
-`protondrive-weekly.sh`'s `/mnt/storage/backup` path, and the NFS export of
-`/mnt/storage` to Tom.
+`protondrive-weekly.sh`'s `/mnt/storage/backup` path. No NFS export to re-create:
+Tom does not need one.
+
+## Tom's stale mount (needs a password on the Pi)
+
+`ssh tom` then:
+
+```sh
+sudo umount /mnt/storage
+sudo cp /etc/fstab /etc/fstab.bak-2026-11-11
+sudo sed -i '\#192.168.1.181:/mnt/storage#d' /etc/fstab
+```
+
+Until that runs, Tom keeps a dead NFS handle at `/mnt/storage` (`nofail` is set,
+so it boots fine) — nothing on Tom reads it.

@@ -71,7 +71,7 @@ Omarchy units enabled that nothing here asks for: `omarchy-crash-watch`,
 - [`whitelist.md`](whitelist.md) — **the user-land list**: apps, CLI tools, dev
   toolchains, desktop shell, gaming. If it is not there it is not installed.
 - [`services.md`](services.md) — units, timers and scheduling: what starts at boot,
-  what runs on a timer, and the two things that read `/mnt/storage`. Scripts live in
+  what runs on a timer, and what reads `/mnt/storage`. Scripts live in
   [`services/jason/`](../../services/jason/).
 - [`packages.md`](packages.md) — every explicit package (265) with verdicts, sizes
   and descriptions, plus the features table. The reference, including the system layer.
