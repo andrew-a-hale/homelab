@@ -70,12 +70,33 @@ judgement calls, each with a `Required By: None` and a reason:
 `cmake` (103M) came out with them: removing `emscripten` left it orphaned and
 `pacman -Rns` swept it. Reinstall if a C++ build ever asks.
 
-Net: 1203 packages / 189 explicit.
+Net: 1184 packages / 177 explicit.
 
 Two more went by hand on request, 1.3G: `visual-studio-code-bin` (1.05G —
 neovim is the editor here, nothing in `.gitconfig`/`.bashrc` points at `code`)
 and `amp-desktop-bin` (284M — the GUI wrapper; the `amp` CLI comes from the
 `@ampcode/cli` npm package and is unaffected, which is what the runner rules use).
+
+### Hygiene pass, same night (d2-bin, python310, and 9 more)
+
+Asked for on request as "hygiene", so these follow the *decision records* rather
+than atime alone — each one contradicted something already written down:
+
+| Removed | Why |
+|---|---|
+| `d2-bin` 40M | D2 diagram compiler. Zero `.d2` files under `~` |
+| `python310` 55M | Every venv here is 3.11.13 or 3.12; nothing references 3.10 |
+| `bluez`, `bolt` | "Bluetooth dropped, no paired devices" — `bluetoothctl devices` empty, `bt-agent` was disabled during the cutover |
+| `nfs-utils`, `gvfs-nfs` | NFS is gone from both ends. `nfs-utils`' atime of *today* was my own `exportfs` |
+| `fcitx5-mozc/-hangul/-chewing` 32M | `~/.config/fcitx5/profile` contains no input engines at all — only `keyboard-us`. fcitx5 itself and `chinese-addons` stay |
+| `hyprsunset` | The needs record says night light was dropped; nothing launches it |
+| `wl-clip-persist` | Not in our config, not run since September |
+| `usage` 11M | jdx/usage, a spec CLI from the mise ecosystem — mise is gone |
+
+Kept with evidence, because they look dead and are not: `odin` (`~/projects/kata/odin/*.odin`),
+`julia` (`~/projects/sieve/julia/main.jl`), `herdr` (`~/.config/herdr` + live
+`~/.herdr-worktrees`), `vhs`/`zbar` (both run in October), `tesseract`,
+`dotnet-runtime-9.0` (two csproj files still target `net9.0`), `bind`, `nmap`.
 
 **Kept on purpose, though each is one command to drop:** `julia` 571M (run Oct
 16), `odin` 122M, `d2-bin` 40M, `python310` 55M, `herdr` 21M,
