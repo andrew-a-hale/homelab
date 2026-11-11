@@ -3,13 +3,13 @@
 
 hl.env("GDK_SCALE", "1")
 
--- Main gaming display, landscape, primary. Workspaces 1-10 live here and are
+-- Main gaming display, landscape, primary. Workspaces 1-6 live here and are
 -- `persistent` so they exist before a window does: without that Hyprland only
 -- creates a workspace when something opens on it, and the bar shows a shifting
 -- row of numbers instead of 1-10.
 hl.monitor({ output = "DP-2", mode = "preferred", position = "0x0", scale = "auto" })
 
-for workspace = 1, 10 do
+for workspace = 1, 6 do
   hl.workspace_rule({ workspace = tostring(workspace), monitor = "DP-2", persistent = true })
 end
 

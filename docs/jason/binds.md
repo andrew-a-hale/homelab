@@ -30,7 +30,8 @@ the config spells them. Mouse binds are named as Hyprland names them.
 | `SUPER + J` | toggle split | |
 | `SUPER + P` | pseudo-tile | |
 | `SUPER + O` | pop window out: float + pin | keep |
-| `SUPER + W` | close window | |
+| `SUPER + W` | close window | polite close: WM_DELETE. Steam's XWayland window ignores it |
+| `SUPER + SHIFT + W` | force-close window | `kill`, for apps that ignore the polite close (Steam) |
 
 ## Workspaces
 

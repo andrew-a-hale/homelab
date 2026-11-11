@@ -35,6 +35,11 @@ hl.bind("SUPER + J", hl.dsp.layout("togglesplit"))
 hl.bind("SUPER + P", hl.dsp.window.pseudo())
 hl.bind("SUPER + W", hl.dsp.window.close())
 
+-- Steam's window is XWayland and ignores the polite close entirely (verified:
+-- the same dispatcher closes a Wayland window at once, Steam's stays put), so
+-- there is a force variant for windows that refuse.
+hl.bind("SUPER + SHIFT + W", hl.dsp.window.kill())
+
 -- Pop the window out: float it and pin it to every workspace, like Omarchy's.
 hl.bind("SUPER + O", function()
   hl.dispatch(hl.dsp.window.float({ action = "toggle" }))
