@@ -12,10 +12,18 @@ window#waybar {
 }
 
 #workspaces button {
-  padding: 0 8px;
-  color: #565f89;
+  min-width: 22px;
+  padding: 0 4px;
+  margin: 2px 1px;
+  color: #9aa5ce;
   background: transparent;
   border: none;
+  border-radius: 0;
+}
+
+#workspaces button:hover {
+  color: #c0caf5;
+  background: #24283b;
 }
 
 #workspaces button.active {

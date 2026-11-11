@@ -58,6 +58,18 @@ Rollback: `snapper` snapshot 13 `pre-aur-limine` is the pre-change filesystem,
   installed to `/usr/bin` from npm (`@ampcode/cli`, `@opencode/cli`), but the
   rest still resolve through mise. Removing it needs one more pass.
 
+## Workspaces: Omarchy's 10-per-monitor scheme went with it
+
+Omarchy ran `monitor-workspaces.lua`, so DP-2 owned 1–10 and **DP-1 owned 11–20**.
+That is why the old bar showed `1 11 14`: workspace 11 held a terminal and 14 the
+floating Steam window. After the layer went, 11 and 14 were just orphan numbers.
+Both windows were moved back into the real range (11 → 6, 14 → 7) and the bar now
+shows only workspaces that exist.
+
+waybar's `persistent-workspaces` does not fill in the missing 2–5, 8–10: on
+0.15.0 `{"DP-2": 10}` produced workspaces 21–30 and `{"*": 10}` created nothing,
+so the option was dropped rather than shipped broken.
+
 ## Still to do after the reboot
 
 1. Boot `//linux`; if it fails, `//linux-omarchy` is still there (menu timeout is

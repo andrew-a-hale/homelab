@@ -11,10 +11,16 @@
   "modules-center": ["clock"],
   "modules-right": ["network", "pulseaudio"],
 
+  // Show the workspaces that exist, not a fixed row. Omarchy's 10-per-monitor
+  // scheme (DP-1 owned 11-20) went with Omarchy; waybar's
+  // "persistent-workspaces" is not usable here — {"DP-2": 10} produced
+  // workspaces 21-30, and {"*": 10} creates nothing (0.15.0). Windows that
+  // were stranded on 11/14 have been moved back to 6/7.
   "hyprland/workspaces": {
     "format": "{name}",
     "on-click": "activate",
-    "sort-by-number": true
+    "sort-by-number": true,
+    "all-outputs": false
   },
 
   "clock": {
