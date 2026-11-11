@@ -162,4 +162,4 @@ sudo /usr/bin/node /usr/lib/node_modules/npm/bin/npm-cli.js i -g @ampcode/cli @o
 
 **Then** the repo can go: remove `[omarchy]` from `/etc/pacman.conf` and
 `pacman -Rns` the layer, which is step 6 of
-[`todo/leave-omarchy.md`](todo/leave-omarchy.md).
+[`complete/leave-omarchy-2026-11-11.md`](complete/leave-omarchy-2026-11-11.md).

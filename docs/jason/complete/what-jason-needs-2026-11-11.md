@@ -17,7 +17,7 @@ service state). Everything else was treated as a guess and left open.
 | [`../README.md`](../README.md) | the machine: hardware, disks, what runs, evidence-backed inventory |
 | [`../packages.md`](../packages.md) | every explicit package + its verdict, features table, app list |
 | [`../todo/needs.md`](../todo/needs.md) | the seven batches, each verdict with its evidence |
-| [`../todo/arch-desktop-spec.md`](../todo/arch-desktop-spec.md) | the install contract — what the new desktop installs, nothing else |
+| [`../complete/arch-desktop-spec-2026-11-11.md`](../complete/arch-desktop-spec-2026-11-11.md) | the install contract — what the new desktop installs, nothing else |
 
 ## Decisions
 

@@ -56,11 +56,11 @@ were last seen in February. Everything is a browser tab now, and the `SUPER+Y`,
 The keymap being built for the Omarchy-free config is [binds.md](binds.md) —
 hand-edited, and the only keybind source once Omarchy is gone.
 
-Custom keybinds today (all 21 are in [spec §3](todo/arch-desktop-spec.md)):
+Custom keybinds today (all 21 are in [spec §3](complete/arch-desktop-spec-2026-11-11.md)):
 the ones that matter daily are `SUPER+RETURN` ghostty, `SUPER+R` VNC to Tom,
 `SUPER+B` chromium, `SUPER+S` steam, `SUPER+F` nautilus, `SUPER+M`/`SUPER+Y`
 webapps. One new one is agreed for the new desktop: `SUPER+L` toggles the
-current workspace tiling ↔ floating ([spec §2.1](todo/arch-desktop-spec.md)).
+current workspace tiling ↔ floating ([spec §2.1](complete/arch-desktop-spec-2026-11-11.md)).
 
 Omarchy units enabled that nothing here asks for: `omarchy-crash-watch`,
 `omarchy-migrate-notify`, `omarchy-recover-internal-monitor`,
