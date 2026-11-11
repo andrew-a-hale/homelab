@@ -13,6 +13,7 @@ Everything here is derived from `docs/jason/`:
 | `waybar/` | Omarchy's Quickshell bar | workspace indicator, clock + date, wifi, volume |
 | `fuzzel/fuzzel.ini` | Omarchy's menu | `SUPER + SPACE` |
 | `hypr/scripts/` | `omarchy-*` helper scripts | capture, recording, power menu |
+| `shell/bashrc`, `shell/starship.toml` | `~/.bashrc`'s `source /usr/share/omarchy/default/bash/rc` | the prompt and history settings Omarchy's rc provided |
 | `limine/50-jason.conf` | `/etc/limine-entry-tool.d/omarchy-{defaults,uki}.conf` | UKI settings `omarchy-settings` owns — see [`../docs/jason/complete/boot-entries-off-omarchy-2026-11-11.md`](../docs/jason/complete/boot-entries-off-omarchy-2026-11-11.md) |
 
 ## Deploy
@@ -24,12 +25,17 @@ the session down on reload:
 cp -a config/hypr    ~/.config/
 cp -a config/waybar  ~/.config/
 cp -a config/fuzzel  ~/.config/
+cp    config/shell/bashrc   ~/.bashrc
+cp    config/shell/starship.toml ~/.config/
 sudo cp config/limine/50-jason.conf /etc/limine-entry-tool.d/   # already done
 ```
 
-Then, once waybar and fuzzel are installed:
+Then enable the three that ship systemd user units — do **not** start them from
+`hypr/autostart.lua`, that runs before uwsm exports `WAYLAND_DISPLAY` and the bar
+silently fails to appear on the next login:
 
 ```sh
+systemctl --user enable --now waybar hyprpaper hypridle
 hyprctl reload
 ```
 

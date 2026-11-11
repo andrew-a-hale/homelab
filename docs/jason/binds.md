@@ -46,7 +46,7 @@ the config spells them. Mouse binds are named as Hyprland names them.
 | Bind | Action | Notes |
 |---|---|---|
 | `SUPER + RETURN` | ghostty | |
-| `SUPER + B` | chromium | |
+| `SUPER + B` | firefox | |
 | `SUPER + SHIFT + B` | chromium, Profile 4 | |
 | `SUPER + ALT + RETURN` | tmux | |
 | `SUPER + CTRL + RETURN` | herdr | the one Omarchy app that survives, `needs.md` batch 1 |

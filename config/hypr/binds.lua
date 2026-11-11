@@ -90,7 +90,7 @@ end)
 ----------------
 
 hl.bind("SUPER + RETURN", hl.dsp.exec_cmd("ghostty"))
-hl.bind("SUPER + B", hl.dsp.exec_cmd("chromium"))
+hl.bind("SUPER + B", hl.dsp.exec_cmd("firefox"))
 hl.bind("SUPER + SHIFT + B", hl.dsp.exec_cmd("chromium --profile-directory='Profile 4'"))
 hl.bind("SUPER + ALT + RETURN", hl.dsp.exec_cmd("ghostty -e tmux new -A -s main"))
 hl.bind("SUPER + CTRL + RETURN", hl.dsp.exec_cmd("herdr"))
