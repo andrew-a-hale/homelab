@@ -37,10 +37,10 @@ sudo systemctl daemon-reload
 systemctl list-timers protondrive-backup.timer
 ```
 
-## Migration step (not done yet)
+## Migration off `~/services` — done 2026-11-11
 
-The installed units still `ExecStart=/home/andy/services/…`. When this repo becomes
-the only source, repoint them and retire the old directory:
+The installed units used to run `/home/andy/services/…`. Repointed to
+`/home/andy/projects/homelab/services/jason/…` and reloaded:
 
 ```bash
 sudo sed -i 's|/home/andy/services/|/home/andy/projects/homelab/services/jason/|' \
@@ -49,5 +49,10 @@ sudo sed -i 's|/home/andy/services/|/home/andy/projects/homelab/services/jason/|
 sudo systemctl daemon-reload && sudo systemctl restart protondrive-documents.service
 ```
 
-Then `~/services` can be archived. Until that happens the copies here and there are
-identical — verify with `diff` before editing either.
+Verified afterwards: `protondrive-documents.service` exits `0/SUCCESS` from the new
+path and cycles on `Restart=always`/`RestartSec=300` (it is a poll loop, so
+"activating (auto-restart)" is its normal resting state between runs);
+`protondrive-backup.timer` next fires Mon 2026-11-16, last ran Mon 2026-11-09.
+
+The old tree is parked at `~/services.retired-2026-11-11` (its own git repo,
+`andrew-a-hale/services`) — delete it once a week has passed without needing it.

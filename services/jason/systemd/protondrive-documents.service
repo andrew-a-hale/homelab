@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/home/andy/services/protondrive-documents.sh
+ExecStart=/home/andy/projects/homelab/services/jason/protondrive-documents.sh
 Restart=always
 RestartSec=300
 User=andy

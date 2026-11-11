@@ -5,4 +5,4 @@ Description=Weekly Proton Drive backup (official CLI)
 Type=oneshot
 User=andy
 Group=andy
-ExecStart=/home/andy/services/protondrive-weekly.sh
+ExecStart=/home/andy/projects/homelab/services/jason/protondrive-weekly.sh
