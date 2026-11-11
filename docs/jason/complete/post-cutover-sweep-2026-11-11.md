@@ -148,7 +148,7 @@ is: `NVD_BACKEND=direct`, `LIBVA_DRIVER_NAME=nvidia`,
 
 | | Before tonight | Now |
 |---|---|---|
-| Packages | 1220 / 200 explicit | 1219 / 199 |
+| Packages | 1220 / 200 explicit | 1215 / 197 (ntfs-3g, ntfsprogs also went) |
 | Kernel | `linux` + `linux-omarchy` fallback | `linux` only |
 | `/boot` | 540M (53%), no snapshot entries | 535M (53%), 1 snapshot entry |
 | `/mnt/storage` | NTFS 1.9T, 681M | ext4 1.8T, 416M |
