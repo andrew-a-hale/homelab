@@ -68,3 +68,15 @@ Loaded against the live Hyprland 0.56.2 Lua API on 2026-11-11 via
 desktop already ran with). `monitors.lua` is the live config unchanged, so it was
 not re-applied. `autostart.lua` was syntax-checked only; loading it would have
 started the bar and the wallpaper daemon.
+
+## systemd user drop-ins
+
+| File | Installed to | Why |
+|---|---|---|
+| `systemd/user/hyprpaper.service.d/10-wait-for-compositor.conf` | `~/.config/systemd/user/hyprpaper.service.d/` | The shipped unit is `Restart=on-failure`, and at login hyprpaper often loses the race with the compositor's Wayland socket (`wl_display_connect failed`), hits the start limit and stays dead — no wallpaper for the session. `Restart=always` + `RestartSec=3` + `StartLimitIntervalSec=0` makes it retry until the socket is up. Verified by killing it and watching it come back |
+
+```bash
+install -Dm644 config/systemd/user/hyprpaper.service.d/10-wait-for-compositor.conf \
+  ~/.config/systemd/user/hyprpaper.service.d/10-wait-for-compositor.conf
+systemctl --user daemon-reload && systemctl --user restart hyprpaper
+```
