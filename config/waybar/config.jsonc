@@ -17,6 +17,10 @@
   // workspaces 21-30, and {"*": 10} creates nothing (measured on 0.15.0). Windows that
   // were stranded on 11/14 have been moved back. Only 1-6 can be created:
   // SUPER + 7/8/9/0 are unbound in config/hypr/binds.lua.
+  // Every bar lists all of them ("all-outputs": true), and the blue chip on a
+  // bar is the workspace that bar's own monitor displays — `.visible` plus
+  // `.hosting-monitor` in style.css, because `.active` alone lights the same
+  // number on both bars.
   // No on-click option exists: clicking a number is built in and sends
   // Hyprland a dispatch. That needs waybar >= 0.16.0 (0.15.0 sends the legacy
   // "dispatch workspace N", which a Lua-config Hyprland rejects; 0.16.0 reads
@@ -24,7 +28,7 @@
   "hyprland/workspaces": {
     "format": "{name}",
     "sort-by": "number",
-    "all-outputs": false
+    "all-outputs": true
   },
 
   "clock": {

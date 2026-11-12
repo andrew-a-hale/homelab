@@ -31,7 +31,11 @@ window#waybar {
   background: #24283b;
 }
 
-#workspaces button.active {
+/* Blue = the workspace this bar's monitor is showing: on screen somewhere
+   (.visible) *and* hosted on this bar's monitor (.hosting-monitor). `.active`
+   is the globally focused workspace, so styling it lights the same number on
+   both bars — dropped. */
+#workspaces button.visible.hosting-monitor {
   color: #1a1b26;
   background: #7aa2f7;
 }
