@@ -23,7 +23,6 @@ open problem — that is the test applied on 2026-11-11, when two dead ones went
 | `ralph-finish.sh` | live ISO | manual | re-runs the tail if the install stops partway |
 | `tom-kmsg.sh` | Tom | root cron, `@reboot` | continuous `dmesg` tee so a silent freeze keeps its last seconds |
 | `pacman-atime-audit.sh` | Jason | manual | which explicit packages never ran — evidence for pruning |
-| `jason-package-inventory.py` | Jason | manual | regenerates [`docs/jason/packages.md`](../docs/jason/packages.md) |
 
 Deleted 2026-11-11 as spent, both recoverable from git history:
 

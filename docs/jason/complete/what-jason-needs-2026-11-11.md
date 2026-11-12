@@ -13,10 +13,10 @@ service state). Everything else was treated as a guess and left open.
 | File | What it is |
 |---|---|
 | [`../binds.md`](../binds.md) | the keymap, hand-edited: 37 binds + workspace ranges |
-| [`../files/hypr/`](../files/hypr/) | copy of the live `~/.config/hypr` config — `hyprland/bindings/looknfeel/monitors/input/autostart.lua`, `hypridle.conf`, `hyprlock.conf`, `xdph.conf`. No credentials (checked) |
+| [`config/hypr/`](../../../config/hypr/) | the live `~/.config/hypr` config (this record used to keep a copy under `docs/jason/files/`; deleted 2026-11-12) |
 | [`../README.md`](../README.md) | the machine: hardware, disks, what runs, evidence-backed inventory |
-| [`../packages.md`](../packages.md) | every explicit package + its verdict, features table, app list |
-| [`../todo/needs.md`](../todo/needs.md) | the seven batches, each verdict with its evidence |
+| [`../whitelist.md`](../whitelist.md) | the install list that came out of this |
+| [`needs-2026-11-11.md`](needs-2026-11-11.md) | the seven batches, each verdict with its evidence |
 | [`../complete/arch-desktop-spec-2026-11-11.md`](../complete/arch-desktop-spec-2026-11-11.md) | the install contract — what the new desktop installs, nothing else |
 
 ## Decisions

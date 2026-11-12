@@ -9,10 +9,16 @@
 
 - [x] Leave Omarchy for plain Arch + Hyprland with only the apps actually used — done 2026-11-11: `docs/jason/complete/left-omarchy-2026-11-11.md` (one reboot to prove the stock kernel)
 - [x] After that boot: dropped `linux-omarchy` + its UKI (snapshot boot entries now work — one, capped by UKI size), retired `mise-bin` for npm/pacman equivalents, and wiped both data disks to ext4 — 2026-11-11: `docs/jason/complete/post-cutover-sweep-2026-11-11.md`
-- [ ] Decide what to do with 340G of Steam (`common` 263G, `compatdata` 69G): uninstall unplayed, or add `/mnt/storage` as a second library — `docs/jason/complete/space-reclaim-2026-11-11.md`
+- [ ] Decide what to do with 332G of Steam (`common` 263G, `compatdata` 69G): uninstall unplayed, or add `/mnt/storage` as a second library — `docs/jason/complete/space-reclaim-2026-11-11.md`
 - [x] Strip the last Omarchy residue (os-release said Omarchy, mirrorlist was Omarchy-only, NOPASSWD reboot rule, its Hyprland `.conf`s) — `docs/jason/complete/omarchy-residue-2026-11-11.md`
-- [ ] Reboot once more to prove the new `/etc/fstab` (two ext4 volumes) and the snapshot boot entry survive a cold boot
+- [x] Reboot to prove the new `/etc/fstab` (two ext4 volumes) and the snapshot boot entry survive a cold boot — booted 2026-11-12 07:30 with `/mnt/games`, `/mnt/storage` and the one snapshot entry present
+- [x] Tidy the docs to describe the machine as it is, not the migration plan; delete the generated inventory, the stale config copy and the finished walkthrough — `docs/jason/complete/simplify-jason-docs-2026-11-12.md`
+- [x] Workspaces capped at 6, colour-coded state on the bar, and the Lua-dispatch fix so clicks and the power menu work — `docs/jason/complete/waybar-workspace-modes-2026-11-12.md`
 - [x] Fill the gaps in `docs/jason/README.md` — decided 2026-11-11: `docs/jason/complete/what-jason-needs-2026-11-11.md`, keymap in `docs/jason/binds.md`
+
+## Rose
+
+- [ ] Same shape as Jason, minus the four system units: plain Arch + Hyprland from `config/`, on the tailnet and the LAN, plays Steam games, nothing scheduled. A dev laptop. Record the machine first (OS/arch are not written down yet), then start from `docs/jason/whitelist.md`
 
 ## Purchases
 

@@ -1,9 +1,8 @@
 # Jason's scheduled services
 
 Source of truth for the scripts and systemd units that run on Jason without a
-package behind them. Before this, they lived only in `~/services` (its own git repo,
-`andrew-a-hale/services`) with the unit files in `/etc/systemd/system` — two places,
-neither of them the homelab repo.
+package behind them. The installed units run these scripts **from this repo path**
+— there is no second copy and no `~/services` tree.
 
 Nothing secret is here. Credentials come from a dedicated pass store
 (`PASSWORD_STORE_DIR=/home/andy/.password-store-proton`), the repo is public.
@@ -21,11 +20,9 @@ Both uploads use the official Proton Drive CLI at `~/.local/bin/proton-drive` wi
 the rclone behaviour that kept dying on stale 2FA tokens — see
 `docs/backups/README.md`).
 
-qBittorrent is **not** a Jason service and is deliberately not in this repo: it runs
-on Ralph, from the packaged `qbittorrent-nox@.service` template. Jason still carries
-the leftovers of the October experiment (package, a hand-written unit, config, 8 MB
-of session data) — see `docs/jason/services.md` for the cleanup. Its config is not
-copied here or anywhere else.
+qBittorrent is **not** a Jason service and is not in this repo: it runs on Ralph,
+from the packaged `qbittorrent-nox@.service` template. Jason's October leftovers
+(package, hand-written unit, config, session data) were removed 2026-11-12.
 
 ## Deploying a change
 
@@ -37,22 +34,5 @@ sudo systemctl daemon-reload
 systemctl list-timers protondrive-backup.timer
 ```
 
-## Migration off `~/services` — done 2026-11-11
-
-The installed units used to run `/home/andy/services/…`. Repointed to
-`/home/andy/projects/homelab/services/jason/…` and reloaded:
-
-```bash
-sudo sed -i 's|/home/andy/services/|/home/andy/projects/homelab/services/jason/|' \
-  /etc/systemd/system/protondrive-documents.service \
-  /etc/systemd/system/protondrive-backup.service
-sudo systemctl daemon-reload && sudo systemctl restart protondrive-documents.service
-```
-
-Verified afterwards: `protondrive-documents.service` exits `0/SUCCESS` from the new
-path and cycles on `Restart=always`/`RestartSec=300` (it is a poll loop, so
-"activating (auto-restart)" is its normal resting state between runs);
-`protondrive-backup.timer` next fires Mon 2026-11-16, last ran Mon 2026-11-09.
-
-The old tree is parked at `~/services.retired-2026-11-11` (its own git repo,
-`andrew-a-hale/services`) — delete it once a week has passed without needing it.
+Deployment is done — units load from
+`/home/andy/projects/homelab/services/jason/…` since 2026-11-11.

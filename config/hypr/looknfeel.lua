@@ -30,3 +30,10 @@ hl.config({
     font_family = "Sans",
   },
 })
+
+-- No workspace slide: switching workspace is instant, everything else keeps
+-- Hyprland's default animation. `hl.animation` is the Lua form of
+-- `animation = workspaces, 0`; 0.56 also has the In/Out leaves.
+for _, leaf in ipairs({ "workspaces", "workspacesIn", "workspacesOut" }) do
+  hl.animation({ leaf = leaf, enabled = false })
+end

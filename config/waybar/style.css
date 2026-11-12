@@ -15,10 +15,15 @@ window#waybar {
   min-width: 22px;
   padding: 0 4px;
   margin: 2px 1px;
-  color: #9aa5ce;
+  color: #c0caf5;
   background: transparent;
   border: none;
   border-radius: 0;
+}
+
+/* Windows present = bright, empty workspace = dim. */
+#workspaces button.empty {
+  color: #565f89;
 }
 
 #workspaces button:hover {

@@ -7,7 +7,7 @@ choice="$(printf '%s\n' lock logout reboot shutdown |
 
 case "$choice" in
   lock) hyprlock ;;
-  logout) hyprctl dispatch exit ;;
+  logout) hyprctl dispatch 'hl.dsp.exit()' ;;  # Lua config: legacy "dispatch exit" is rejected
   reboot) systemctl reboot ;;
   shutdown) systemctl poweroff ;;
 esac

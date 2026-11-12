@@ -50,10 +50,12 @@ end)
 ---- workspaces -----
 ---------------------
 
-for workspace = 1, 10 do
-  local key = tostring(workspace % 10) -- 10 is the 0 key
-  hl.bind("SUPER + " .. key, hl.dsp.focus({ workspace = tostring(workspace) }))
-  hl.bind("SUPER + SHIFT + " .. key, hl.dsp.window.move({ workspace = tostring(workspace) }))
+-- Workspaces 1-6, and only those: SUPER + 7/8/9/0 are deliberately unbound so
+-- the bar cannot grow a seventh space (waybar shows the workspaces that exist).
+for workspace = 1, 6 do
+  local key = tostring(workspace)
+  hl.bind("SUPER + " .. key, hl.dsp.focus({ workspace = key }))
+  hl.bind("SUPER + SHIFT + " .. key, hl.dsp.window.move({ workspace = key }))
 end
 
 -- SUPER + L: float the whole workspace, again to tile it back. The named rule

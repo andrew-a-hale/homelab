@@ -37,8 +37,8 @@ the config spells them. Mouse binds are named as Hyprland names them.
 
 | Bind | Action | Notes |
 |---|---|---|
-| `SUPER + 1` … `SUPER + 0` | switch to workspace 1–10 | |
-| `SUPER + SHIFT + 1` … `SUPER + 0` | move window to workspace 1–10 | |
+| `SUPER + 1` … `SUPER + 6` | switch to workspace 1–6 | nothing above 6 exists; `SUPER + 7..0` unbound on purpose |
+| `SUPER + SHIFT + 1` … `SUPER + 6` | move window to workspace 1–6 | same cap |
 | `SUPER + L` | toggle this workspace tiling ↔ floating | the one layout key, `arch-desktop-spec.md` §2.1 |
 
 ## Apps
@@ -49,7 +49,7 @@ the config spells them. Mouse binds are named as Hyprland names them.
 | `SUPER + B` | firefox | |
 | `SUPER + SHIFT + B` | chromium, Profile 4 | |
 | `SUPER + ALT + RETURN` | tmux | |
-| `SUPER + CTRL + RETURN` | herdr | the one Omarchy app that survives, `needs.md` batch 1 |
+| `SUPER + CTRL + RETURN` | herdr | the one Omarchy app that survives |
 | `SUPER + F` | nautilus | |
 | `SUPER + N` | nvim | |
 | `SUPER + A` | btop | |
@@ -79,7 +79,7 @@ Kept here so nothing gets re-added by accident.
 - **Omarchy furniture**: menu (`SUPER+SPACE` old), panels 1–9, audio/network/power/
   display/hardware/share/calendar/weather/time/reminders menus, keybindings
   cheatsheet (`SUPER+K`), theme menu, `SUPER+CTRL+O` menu toggle.
-- **Webapps** (no web apps at all, `needs.md` batch 3): `SUPER+M`, `SUPER+Y`,
+- **Webapps** (no web apps at all): `SUPER+M`, `SUPER+Y`,
   `SUPER+SHIFT+S`, `SUPER+D`, `SUPER+SHIFT+A`, `SUPER+SHIFT+ALT+A`,
   `SUPER+SHIFT+ALT+G`, `SUPER+SHIFT+ALT+E`.
 - **Gone with the app**: `SUPER+R` (VNC to Tom, tigervnc dropped), `SUPER+CTRL+RETURN`
