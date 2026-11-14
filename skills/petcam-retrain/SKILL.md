@@ -14,7 +14,8 @@ description: >
 > **Hosts changed 2026-11-08.** The corpus, the model and the detector live on
 > **Ralph** now (`~andy/petcam`, `petcam-detect.service`), not Tom — see
 > `docs/petcam/complete/tom-camera-appliance-2026-11-08.md`. In everything below,
-> read `tom@…`/`ssh tom` as `ralph@ralph.tailad1015.ts.net`, `/home/tom/…` as
+> read `tom@…`/`ssh tom` as `ssh ralph` (alias; user **andy**, not `ralph` —
+> the `ralph@ralph…` form fails with `Permission denied`), `/home/tom/…` as
 > `/home/andy/…`, and restart the detector with
 > `sudo systemctl restart petcam-detect.service` instead of the pkill/setsid
 > lines (Tom has no detector any more).

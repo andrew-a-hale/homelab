@@ -12,7 +12,7 @@
 # for offline scoring, and never deploys — the weights stay in runs/$RUN/.
 set -euo pipefail
 
-PI=ralph@ralph.tailad1015.ts.net  # petcam state + detector live here since 2026-11-08
+PI=ralph  # ssh alias (andy@ralph.tailad1015.ts.net): petcam state + detector live there since 2026-11-08
 WORK="$HOME/petcam-train"
 YOLO="$WORK/.venv/bin/yolo"
 EPOCHS=${EPOCHS:-100}
