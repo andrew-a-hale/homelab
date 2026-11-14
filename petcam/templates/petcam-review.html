@@ -30,7 +30,7 @@
     </nav>
     <p>Verify the auto-labeled training corpus before a retrain. Red dashed boxes
        disagree with the colour hint (orange fraction vs 0.18); ⚑ marks an audit
-       flag. Neither hint decides a label. Keys: ← → move · D reviewed ·
+       flag. Neither hint decides a label. Keys: ← → move · D reviewed (advances) ·
        N no cat · R back to label queue · X delete frame.</p>
     <div id="wrap">
         <img id="img" alt="training frame">
@@ -147,9 +147,11 @@
             });
         }
 
+        // reviewing is a flow: ticking a frame moves on to the next one (D and
+        // clicking ✓ both). Unticking stays put.
         function markDone() {
             post("/review/done", { name: cur.name, done: cur.done ? "0" : "1" })
-                .then(() => { cur.done = !cur.done; render(); });
+                .then(() => { cur.done = !cur.done; cur.done ? step(1) : render(); });
         }
 
         function negative() {

@@ -99,14 +99,17 @@ while the gallery loads; kill the capture cron and `petcam.sh` is back within
   window; `/log` shows it newest-first, 200/page.
 - **Training data**: `~/petcam/training/` = YOLO pairs (`images/` + `labels/`),
   class `0 = pancake`, `1 = willow`. Confident detections auto-save pairs;
-  near-misses queue in `~/petcam/tolabel/` for hand-labeling.
+  near-misses (`HARVEST_MIN_TOP` 0.2 ≤ top < `MIN_CONF`) queue in
+  `~/petcam/tolabel/` for hand-labeling — anything scoring below 0.2 is not worth
+  a click, use `/live` **Capture** for a hard miss.
 - **Labeling on `/label`**: *save* needs an explicit cat (`cat=pancake|willow`,
   server-enforced) and writes an approved box; *reject* saves the frame as a
   negative (empty label); *delete* removes corrupt frames entirely. `/live` has a
   **Capture** button that snapshots the current still, runs YOLO and queues it.
 - **`/review`** audits the corpus before a retrain: every pair with box, class and
   per-box colour stats; actions flip the class, remove a box, mark negative,
-  delete, or mark reviewed. `training/reviewed.txt` records what the owner
+  delete, or mark reviewed (which advances to the next frame — reviewing is a
+  flow). `training/reviewed.txt` records what the owner
   verified, and `train-model.sh` trains **only** on verified pairs —
   `/label`-named pairs, `_neg` rejects and reviewed stems. Colour-flag
   disagreements sort first (advisory only, a hint never sets a label); stats are
@@ -119,7 +122,7 @@ while the gallery loads; kill the capture cron and `petcam.sh` is back within
 Top of `petcam.sh`: capture/stream resolution, fps, bitrates.
 Top of `petcam-detect.py`: `STILL` (Tom's still URL), `STILL_TIMEOUT_S`,
 `MIN_CONF`, `MOTION_*`, `HEARTBEAT_S`, `KEEP_SHOTS`, `SAVE_COOLDOWN_S`,
-`LOG_KEEP_DAYS`, `HARVEST_SAMPLING_RATE`.
+`LOG_KEEP_DAYS`, `HARVEST_SAMPLING_RATE`, `HARVEST_MIN_TOP`.
 `ORANGE_*`/`GRAY_MAX_SAT`/`ORANGE_FRAC` drive the hue classifier: naming comes
 from the 2-class model when a fine-tune is loaded, else the hue classifier (which
 names COCO cats as pancake/willow).

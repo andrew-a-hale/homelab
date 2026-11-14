@@ -34,6 +34,7 @@ MODEL = os.environ.get(
 )  # env override so --score-corpus can run off-Tom with a copied model
 
 HARVEST_SAMPLING_RATE = 0.25
+HARVEST_MIN_TOP = 0.2  # near-miss floor: only queue what YOLO *almost* called a cat. Was 0.1; half the queue was noise (1371 frames at 0.1-0.2 vs 679 at 0.2-0.3 over 14 days) and hand-labeling it was the bottleneck.
 
 MIN_CONF = 0.3  # detection confidence (knob: raise if furniture gets "detected"). Was 0.4; lowered 2026-11-01 when tiny curled willow scored 0.42 — measured +1 false positive across 109 hand-made negatives at 0.3.
 NAME = {"gray": "willow", "orange": "pancake"}  # coat label -> cat
@@ -82,9 +83,9 @@ last_harvest = 0.0
 
 
 def harvest(img, top, box=None, cls=None):
-    """keep near-miss frames (0.1 <= top < MIN_CONF) + YOLO proposal box, for /label"""
+    """keep near-miss frames (HARVEST_MIN_TOP <= top < MIN_CONF) + YOLO proposal box, for /label"""
     global last_harvest
-    if not (0.1 <= top < MIN_CONF):
+    if not (HARVEST_MIN_TOP <= top < MIN_CONF):
         return
     now = time.time()
     if now - last_harvest < 120:
