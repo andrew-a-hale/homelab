@@ -39,6 +39,7 @@ rpc_field() { python3 -c 'import json,sys; r=json.load(sys.stdin); print(r.get("
 geek_key() { # encrypted cred on a server, `pass` on Jason; never a plain file
   local k
   k=$(sudo -n systemd-creds decrypt --name=nzbgeek /etc/homelab/nzbgeek.cred - 2>/dev/null) \
+    || k=$(ssh ralph "sudo -n systemd-creds decrypt --name=nzbgeek /etc/homelab/nzbgeek.cred -" 2>/dev/null) \
     || k=$(pass show homelab/nzbgeek/apikey 2>/dev/null) \
     || { echo 'nzb-dl: no NZBGeek key — provision /etc/homelab/nzbgeek.cred (docs/media/README.md)' >&2; return 1; }
   printf '%s' "$k" | tr -d '[:space:]'
