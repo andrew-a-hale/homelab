@@ -3,8 +3,10 @@
 #
 #   nzb-dl.sh search "gurren lagann" [--binsearch|--nzbking]
 #   nzb-dl.sh add <details-id|details-url> <Movies|Series|Music|Software> [--binsearch|--nzbking] [--force] [--dry-run]
-# Indexer defaults to NZBGeek (key: pass show homelab/nzbgeek/apikey); the two
-# free indexers are the fallbacks.
+# Indexer defaults to NZBGeek; the key is never a plain file — on a server it
+# decrypts /etc/homelab/nzbgeek.cred (systemd-creds, TPM2-bound), on Jason it
+# falls back to `pass show homelab/nzbgeek/apikey`. Provisioning: docs/media/README.md.
+# The two free indexers are the fallbacks.
 #   nzb-dl.sh status
 #   nzb-dl.sh history
 #   nzb-dl.sh remove <job-id>
@@ -34,7 +36,13 @@ fi
 # jsonrpc answers are pretty-printed; parse one field of the first result item.
 rpc_field() { python3 -c 'import json,sys; r=json.load(sys.stdin); print(r.get("result",r.get("error")))'; }
 
-geek_key() { pass show homelab/nzbgeek/apikey; }
+geek_key() { # encrypted cred on a server, `pass` on Jason; never a plain file
+  local k
+  k=$(sudo -n systemd-creds decrypt --name=nzbgeek /etc/homelab/nzbgeek.cred - 2>/dev/null) \
+    || k=$(pass show homelab/nzbgeek/apikey 2>/dev/null) \
+    || { echo 'nzb-dl: no NZBGeek key — provision /etc/homelab/nzbgeek.cred (docs/media/README.md)' >&2; return 1; }
+  printf '%s' "$k" | tr -d '[:space:]'
+}
 
 fetch() { # fetch <url> <outfile>
   curl -sSL -m 60 -A "$UA" -o "$2" -w '%{http_code}' "$1"
@@ -46,7 +54,7 @@ cmd_search() {
   case "$INDEXER" in
     binsearch) fetch "https://www.binsearch.info/search?$(python3 -c 'import sys,urllib.parse;print(urllib.parse.urlencode({"q":sys.argv[1]}))' "$q")" "$html" >/dev/null ;;
     nzbking)   fetch "https://nzbking.com/search/?$(python3 -c 'import sys,urllib.parse;print(urllib.parse.urlencode({"q":sys.argv[1]}))' "$q")" "$html" >/dev/null ;;
-    nzbgeek)   fetch "https://api.nzbgeek.info/api?t=search&limit=50&o=json&apikey=$(geek_key)&q=$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "$q")" "$html" >/dev/null ;;
+    nzbgeek)   fetch "https://api.nzbgeek.info/api?t=search&limit=50&o=json&apikey=$GEEK_KEY&q=$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "$q")" "$html" >/dev/null ;;
   esac
   python3 - "$html" "$INDEXER" <<'PY'
 import html as htmllib, json, re, sys
@@ -127,7 +135,7 @@ cmd_add() {
   case "$INDEXER" in
     binsearch) rc=$(fetch "https://www.binsearch.info/nzb?id=$id" "$tmp") ;;
     nzbking)   rc=$(fetch "https://nzbking.com/nzb:$id/" "$tmp") ;;
-    nzbgeek)   rc=$(fetch "https://api.nzbgeek.info/api?t=get&apikey=$(geek_key)&id=$id" "$tmp") ;;
+    nzbgeek)   rc=$(fetch "https://api.nzbgeek.info/api?t=get&apikey=$GEEK_KEY&id=$id" "$tmp") ;;
   esac
   # A details id gives the whole post; the /nzb endpoint may still hand back an
   # HTML page when the post needs per-file selection, so check for real XML.
@@ -210,6 +218,9 @@ for a in "$@"; do
     *) args+=("$a") ;;
   esac
 done
+case "$cmd:$INDEXER" in
+  search:nzbgeek|add:nzbgeek) GEEK_KEY=$(geek_key) ;;   # set -e aborts if unprovisioned
+esac
 case "$cmd" in
   search)  [ ${#args[@]} -ge 1 ] || usage; cmd_search "${args[0]}" ;;
   add)     [ ${#args[@]} -ge 1 ] || usage; cmd_add "${args[0]}" "${args[1]:-}" ;;

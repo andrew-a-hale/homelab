@@ -186,6 +186,7 @@ Rebuild detail and the rollback path: `docs/petcam/complete/tom-camera-appliance
 | qBittorrent login + state | `/etc/nginx/htpasswd`, `/var/lib/qbittorrent` | user `andy`, password from `pass show homelab/qbittorrent`; rotate with `openssl passwd -apr1 -stdin` (htpasswd is not installed on Ralph), update the `pass` entry, `systemctl reload nginx`; re-add torrents |
 | NZBGet config + provider login | `/var/lib/nzbget/nzbget.conf` (600 `nzbget:nzbget`), account at xsnews.com | login in `pass`: `pass show homelab/xsnews/username` / `..password`; paste into `Server1.*` and `systemctl restart nzbget`. The WebUI has no password of its own — `AuthorizedIP=127.0.0.1` means only nginx reaches it, and `/nzb/` carries the same basic auth as `/bt/` |
 
+| NZBGeek API key | `/etc/homelab/nzbgeek.cred` on ralph — `systemd-creds`, `host+tpm2`, so a stolen disk or a copied blob is useless | master copy `pass show homelab/nzbgeek/apikey` on Jason; re-provision with `pass show homelab/nzbgeek/apikey \| tr -d '\n' \| ssh ralph 'sudo install -d -m700 /etc/homelab && sudo systemd-creds encrypt --with-key=host+tpm2 --name=nzbgeek - /etc/homelab/nzbgeek.cred && sudo chmod 600 /etc/homelab/nzbgeek.cred'` |
 | SSH host keys | `/etc/ssh` | regenerated on install; refresh known_hosts |
 | Router admin | sticker / ISP account | physical |
 

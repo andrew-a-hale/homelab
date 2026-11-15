@@ -29,6 +29,12 @@ The tunnel ingress points `jellyfin.andrewahale.com` **straight at
 `127.0.0.1:8096`**, not through nginx, because `BaseUrl=/jf` already carries the
 prefix (`../ralph/cloudflared-config.yaml`).
 
+Users: `jellyfin` (admin, password undocumented and in Pass) and
+`callumbrowne` (non-admin guest, added 2026-11-12 —
+[`complete/jellyfin-user-callumbrowne-2026-11-12.md`](complete/jellyfin-user-callumbrowne-2026-11-12.md)).
+Add users over the local API with the existing `ApiKeys` token rather than the
+admin password; new users come out `IsHidden=true`, flip it to `false`.
+
 ## Downloads
 
 qBittorrent is **bound to `proton0`** (Proton WireGuard, `10.2.0.2`): downloads
@@ -56,7 +62,7 @@ the install decisions: [`complete/nzbget-parallel-2026-11-09.md`](complete/nzbge
 | WebUI | `127.0.0.1:6789`, `AuthorizedIP=127.0.0.1`; nginx `/nzb/` is the only way in |
 | Paths | `MainDir=/srv/media/downloads` (on the same filesystem as the library, so a finished job is a `rename`, not a copy), categories `Movies` → `/srv/media/movies`, `Series` → `/srv/media/tv`, `AppendCategoryDir=no` |
 | Unpack/verify | `par2cmdline`, `unrar`, `7zip` from `extra`; `ArticleCache=200`, `WriteBuffer=1024` |
-| Indexer | **NZBGeek**, lifetime sub, API key in `pass show homelab/nzbgeek/apikey`. Free fallbacks `--binsearch` (`binsearch.info`) and `--nzbking` (`nzbking.com`; `nzbindex.com` is client-rendered and useless for `?q=`). Geek finds re-ups the free indexers miss, which is what unblocked Avatar: The Last Airbender |
+| Indexer | **NZBGeek**, lifetime sub. Key is never a plain file: ralph decrypts `/etc/homelab/nzbgeek.cred` (`systemd-creds`, `host+tpm2`, 600 root) and Jason falls back to `pass show homelab/nzbgeek/apikey`. Provision once from Jason: `pass show homelab/nzbgeek/apikey | tr -d '\n' | ssh ralph 'sudo install -d -m700 /etc/homelab && sudo systemd-creds encrypt --with-key=host+tpm2 --name=nzbgeek - /etc/homelab/nzbgeek.cred && sudo chmod 600 /etc/homelab/nzbgeek.cred'`; without it `nzb-dl.sh` exits "no NZBGeek key". Free fallbacks `--binsearch` (`binsearch.info`) and `--nzbking` (`nzbking.com`; `nzbindex.com` is client-rendered and useless for `?q=`). Geek finds re-ups the free indexers miss, which is what unblocked Avatar: The Last Airbender |
 | Search | `scripts/nzb-dl.sh` — `search "query"` (NZBGeek by default), `add <id> Series|Movies`, `status`, `history`, `remove <job>`; pushes through jsonrpc over `ssh ralph`, because the WebUI is loopback-only. Edge cases and the manual fallback: `skills/usenet-download/SKILL.md` and [`complete/nzb-automation-2026-11-09.md`](complete/nzb-automation-2026-11-09.md) |
 | Provider | **XS News**, configured 2026-11-09: `Server1.Host=reader.xsnews.nl`, `Port=563`, `Encryption=yes`, `Connections=20`, `Level=0`, `Active=yes`. Account login in `pass` (`homelab/xsnews/username`, `homelab/xsnews/password`) and the config copy is `/var/lib/nzbget/nzbget.conf` (600, `nzbget:nzbget`). Connections verified by NZBGet's article-availability check, not just by a TCP connect |
 | Library layout | `scripts/nzb-tidy.sh` — NZBGet unpacks each job into a folder named after the release, so a finished episode lands as `tv/Avatar.The.Last.Airbender.S01E01…par2_ yEnc (1-28)/` and Jellyfin reads that as its own series. Run `./scripts/nzb-tidy.sh` after jobs finish; it files `SxxEyy` videos into `tv/<Show (Year)>/Season NN/` and deletes the emptied job dir (`complete/avatar-korra-metadata-2026-11-10.md`) |

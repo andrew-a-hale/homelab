@@ -23,7 +23,7 @@ One script does the whole chain: `~/projects/homelab/scripts/nzb-dl.sh`
 
 | Step | Where | Notes |
 |---|---|---|
-| Search indexer | **Jason/Ralph** (needs WAN) | **NZBGeek is the default** — lifetime sub, API key in `pass show homelab/nzbgeek/apikey`. Fallbacks: `--binsearch` (`binsearch.info`) and `--nzbking` (`nzbking.com`). `nzbindex.com` is client-rendered — its `?q=` search returns no results, don't bother |
+| Search indexer | **Jason/Ralph** (needs WAN) | **NZBGeek is the default** — lifetime sub, API key from `/etc/homelab/nzbgeek.cred` on ralph (`systemd-creds`, TPM-bound) or `pass show homelab/nzbgeek/apikey` on Jason — never a plain file (`../docs/media/README.md`). Fallbacks: `--binsearch` (`binsearch.info`) and `--nzbking` (`nzbking.com`). `nzbindex.com` is client-rendered — its `?q=` search returns no results, don't bother |
 | Download the NZB | Jason/Ralph | geek: `api.nzbgeek.info/api?t=get&id=<guid>`; binsearch: a details id = one collection and `-L` is mandatory (308-redirects) |
 | Queue it | **Ralph**, NZBGet | `127.0.0.1:6789` only (`AuthorizedIP=127.0.0.1`) → `ssh ralph curl …`, or a plain `curl` when the script is already running on Ralph (it checks `/etc/hostname`). Never the WAN URL |
 | Files land | Ralph | `Category=Series` → `/srv/media/tv`, `Movies` → `/srv/media/movies`, `Music`, `Software`. No category → `/srv/media/downloads/complete`, which Jellyfin never sees (the script now refuses an empty one) |

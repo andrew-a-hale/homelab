@@ -14,7 +14,7 @@ open problem — that is the test applied on 2026-11-11, when two dead ones went
 | `train-model.sh` | Jason | manual (`petcam-retrain` skill) | fine-tune the detector, gate the result |
 | `dht-writer.sh` | Ralph | `dht` service | USB DHT sensor → `/srv/dht/dht.json` |
 | `dht/` (C + Makefile + service + Arduino firmware) | Ralph | `dht` service | the sensor daemon itself |
-| `nzb-dl.sh` | Ralph | manual / skill | search NZBGeek, queue in NZBGet |
+| `nzb-dl.sh` | Ralph or Jason | manual / skill | search NZBGeek, queue in NZBGet |
 | `nzb-tidy.sh` | Ralph | cron | re-file finished downloads into Jellyfin's library |
 | `proton-guard.sh` | Ralph | `proton-guard.timer`, 5 min | re-raise `proton0` if the WG tunnel drops |
 | `wifi-guard.sh` | Tom | cron | recover Tom's brcmfmac when it stops passing traffic |

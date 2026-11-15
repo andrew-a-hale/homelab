@@ -56,11 +56,36 @@ documentation:
 What is left is ordinary: a device that already holds a private key, or the
 Jellyfin password. See the open briefs.
 
+## Where secrets live
+
+**Jason holds the master copy.** Jason has `pass` (GPG, machine tokens) and the
+Proton Pass client. **Ralph and Tom have neither** — no `pass`, no
+`~/.password-store`, no `proton-drive`/`proton-pass` (verified 2026-11-12).
+
+So a secret that a host needs *to operate* is **copied onto that host
+encrypted**, not in free text: `systemd-creds encrypt --with-key=host+tpm2` into
+`/etc/homelab/<name>.cred` (600, root), and the script reads it back with
+`sudo -n systemd-creds decrypt`. Host-bound + TPM means the blob decrypts only on
+that machine — a stolen disk, a backup, or a copy on another host is useless.
+The plaintext exists only in the pipe from Jason; nothing writes it to disk.
+Live example: `/etc/homelab/nzbgeek.cred` (`RUNBOOK.md` secrets table).
+
+Already-plaintext-on-purpose exceptions, because the service needs to read them
+without root: `/etc/nginx/htpasswd` (nginx), `Server1.*` in
+`/var/lib/nzbget/nzbget.conf` (NZBGet). Don't add more without deciding here.
+Never write `ssh ralph 'pass ...'` in docs or scripts — Ralph cannot decrypt, and
+agent tool calls have no TTY for the passphrase anyway.
+
+Human-typed credentials (dashboards, logins) live only in Proton Pass on Jason;
+they are never needed on a server at runtime.
+
 ## Decisions
 
 Assessment notes, decisions and the corrections they forced:
 [`complete/baseline-assessment-2026-11-08.md`](complete/baseline-assessment-2026-11-08.md)
-— no VLAN segmentation, Proton Pass as the one human-credential store, boot
+— no VLAN segmentation, Proton Pass as the one human-credential store, operating
+secrets as `systemd-creds` blobs on the host that needs them (Ralph/Tom have
+neither `pass` nor Proton), boot
 secrets stay on disk, Tom leaves the tailnet, detection before more prevention.
 
 ## Open work
