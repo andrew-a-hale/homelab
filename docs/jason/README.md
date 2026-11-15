@@ -15,7 +15,7 @@ rebuild (or a second machine like Rose) starts from evidence instead of guesses.
 |---|---|
 | Base OS | Arch, 1184 packages / 177 explicit |
 | Kernel | stock `linux` 7.2.11-arch1-1 |
-| Session | sddm → `uwsm` → Hyprland 0.56.2 (Wayland) |
+| Session | sddm → `uwsm` → Hyprland 0.56.2 (Wayland) + `hyprbars` (hyprpm plugin: draggable titlebar bar on floating windows) |
 | WM config | Lua in `~/.config/hypr/`, from [`config/hypr/`](../../config/hypr): `hyprland.lua` requires `monitors`, `input`, `looknfeel`, `rules`, `binds`, `autostart`; systemd user units for the GUI daemons |
 | Shell | waybar (workspaces colour-coded by state, clock + date, wifi, volume) + fuzzel launcher + hyprpaper wallpaper. No notification daemon, no OSD, no tray — deliberate |
 | GPU | RTX 3070 (`nvidia-open-dkms` 615.78.08) + Raphael iGPU `Radeon 610M`; NVIDIA is the render device |
@@ -49,6 +49,9 @@ there are no drops pending.
 - [`complete/waybar-workspace-modes-2026-11-12.md`](complete/waybar-workspace-modes-2026-11-12.md)
   — why workspace state is colour, the 6-workspace cap, and why waybar must stay
   ≥ 0.16.0 (Hyprland's Lua dispatch).
+- [`complete/floating-window-handle-2026-11-12.md`](complete/floating-window-handle-2026-11-12.md)
+  — the `hyprbars` plugin gives floating windows a grab bar (drag with no
+  modifier, floating only, pinned to the running Hyprland version).
 - [`complete/simplify-jason-docs-2026-11-12.md`](complete/simplify-jason-docs-2026-11-12.md)
   — the 2026-11-12 tidy: generated inventory and stale config copies deleted.
 

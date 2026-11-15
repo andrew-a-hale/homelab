@@ -53,7 +53,7 @@ the config spells them. Mouse binds are named as Hyprland names them.
 | `SUPER + F` | nautilus | |
 | `SUPER + N` | nvim | |
 | `SUPER + A` | btop | |
-| `SUPER + D` | vesktop | |
+| `SUPER + D` | discord | was vesktop until its streams broke, 2026-11-12 |
 | `SUPER + S` | steam | |
 | `SUPER + SPACE` | fuzzel launcher | replaces Omarchy's menu |
 

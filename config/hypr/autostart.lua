@@ -19,3 +19,6 @@ hl.exec_cmd("pgrep -x fcitx5 >/dev/null || fcitx5 -d --replace")
 
 -- USB sticks: automount, no tray icon (waybar has no tray module here).
 hl.exec_cmd("pgrep -x udiskie >/dev/null || udiskie --automount --no-notify --no-tray")
+
+-- hyprpm plugins (hyprbars) are loaded by hyprpm, not by Hyprland itself.
+hl.exec_cmd("hyprpm reload -n")

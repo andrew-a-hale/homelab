@@ -45,12 +45,31 @@ First run on a fresh plain-Hyprland install: back up the existing `~/.config/hyp
 first — Hyprland's sample config lives there and it is easier to keep it as
 `hypr.orig/` than to regenerate it.
 
+## The one plugin: hyprbars
+
+`hypr/looknfeel.lua` sets `plugin:hyprbars:*` and `hypr/rules.lua` limits bars to
+floating windows. The package does **not** ship the plugin — `hyprpm` builds it
+against the installed Hyprland headers, so it has to be rebuilt on every
+Hyprland upgrade:
+
+```sh
+sudo pacman -S --needed hyprpm cmake meson
+hyprpm update                                        # headers for the running build
+hyprpm add https://github.com/hyprwm/hyprland-plugins v0.56.0   # pinned to 0.56.x
+hyprpm enable hyprbars && hyprpm reload
+```
+
+Skipping it is not fatal: the `plugin:hyprbars` keys are ignored and floating
+windows simply have no grab bar ([why](../../docs/jason/complete/floating-window-handle-2026-11-12.md)).
+
 ## Decisions worth knowing
 
 - **Wallpaper**: `hypr/hyprpaper.conf` points at `~/Pictures/wallpaper.png`, static,
   converted once from an Omarchy `.webp` theme (hyprpaper has no libwebp).
 - **No notification daemon, no OSD, no tray**: deliberate. The scripts do not call
   `notify-send` for that reason.
+- **hyprbars is loaded by `hyprpm`, not Hyprland**: `hypr/autostart.lua` runs
+  `hyprpm reload -n` at startup, otherwise floating windows log in with no grab bar.
 - **Theming** is static and hand-written. There is no theme switcher; change the
   colours in `hypr/looknfeel.lua`, `waybar/style.css` and `fuzzel/fuzzel.ini` if
   they ever need to change (`#7aa2f7` is the accent in all three).

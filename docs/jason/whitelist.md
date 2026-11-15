@@ -26,6 +26,9 @@ sudo pacman -S --needed sddm uwsm hyprland hyprland-guiutils hyprlock hypridle \
   hyprpaper waybar fuzzel hyprpicker xdg-desktop-portal-gtk \
   xdg-desktop-portal-hyprland xdg-terminal-exec wl-clipboard grim slurp satty \
   gpu-screen-recorder
+# hyprbars: draggable titlebar on floating windows (hyprpm builds it, cmake/meson
+# are hyprpm's build deps — rebuild with `hyprpm update` after every hyprland bump)
+sudo pacman -S --needed hyprpm cmake meson
 
 # audio, input, fonts, themes
 sudo pacman -S --needed pipewire pipewire-alsa pipewire-pulse pipewire-jack \
@@ -42,7 +45,7 @@ sudo pacman -S --needed udiskie gvfs-mtp gvfs-smb gnome-disk-utility \
 
 # apps opened by hand (binds: docs/jason/binds.md)
 sudo pacman -S --needed ghostty chromium firefox evince mpv mpv-mpris \
-  imagemagick libvips libreoffice-fresh steam vesktop tesseract \
+  imagemagick libvips libreoffice-fresh steam discord tesseract \
   tesseract-data-eng libqalculate python-gobject python-numpy
 
 # shell and command line
@@ -63,13 +66,12 @@ sudo pacman -S --needed nvidia-open-dkms lib32-nvidia-utils \
 
 ## AUR packages
 
-Eight, all AUR-owned, none from `[omarchy]` (that repo is gone):
+Seven, all AUR-owned, none from `[omarchy]` (that repo is gone):
 
 | Package | Why |
 |---|---|
 | `yay` | AUR helper — bootstrap with `git clone` + `makepkg -si` |
 | `herdr` | agent workspace manager, `SUPER+CTRL+RETURN`. The one Omarchy app kept; no repo package exists |
-| `vesktop` | Discord, `SUPER+D` |
 | `hyprland-preview-share-picker` | window previews when screen sharing |
 | `limine-mkinitcpio-hook`, `limine-snapper-sync` | write `/boot/limine.conf` and snapshot entries; install these **before** any `pacman -Rns` that could orphan them |
 | `ttf-ia-writer` | iA Writer fonts |

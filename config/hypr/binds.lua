@@ -99,7 +99,7 @@ hl.bind("SUPER + CTRL + RETURN", hl.dsp.exec_cmd("herdr"))
 hl.bind("SUPER + F", hl.dsp.exec_cmd("nautilus"))
 hl.bind("SUPER + N", hl.dsp.exec_cmd("ghostty -e nvim"))
 hl.bind("SUPER + A", hl.dsp.exec_cmd("ghostty -e btop"))
-hl.bind("SUPER + D", hl.dsp.exec_cmd("vesktop"))
+hl.bind("SUPER + D", hl.dsp.exec_cmd("discord"))
 hl.bind("SUPER + S", hl.dsp.exec_cmd("steam"))
 hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("fuzzel"))
 
