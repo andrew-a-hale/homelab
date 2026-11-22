@@ -129,6 +129,7 @@ is load bearing. **jason** = storage/runner. **rose** = idle node.
   ufw allow in on tailscale0 to any port 8096 proto tcp
   ufw allow from 192.168.1.0/24 to any port 80 proto tcp     # nginx: /bt/ /jf/ site
   ufw allow from 192.168.1.0/24 to any port 8096 proto tcp   # Jellyfin for TV/phone
+  ufw allow from 192.168.1.0/24 to any port 7359 proto udp   # Jellyfin LAN discovery
   ufw allow 41641/udp                                       # tailscale direct
   ufw enable
   ```

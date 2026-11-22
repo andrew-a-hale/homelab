@@ -1,5 +1,5 @@
-# Shell setup for plain Arch (Omarchy's default/bash/rc is gone).
-# The old file is kept at ~/.bashrc.omarchy-2026-11-11.
+# Shell setup for plain Arch. There is no system-wide bash rc any more;
+# everything this shell needs is in this file.
 
 # Prompt: starship, config in ~/.config/starship.toml
 eval "$(starship init bash)"

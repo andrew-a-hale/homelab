@@ -22,7 +22,7 @@
 
 ## Purchases
 
-- [ ] Google TV Streamer or Nvidia Shield
+- [x] Google TV Streamer or Nvidia Shield — Streamer bought, on the LAN at `192.168.1.11` 2026-11-22, Jellyfin app is the remaining manual step: `docs/media/complete/google-tv-streamer-2026-11-22.md`
 - [ ] Smart blub + Lamp: https://www.smarthome.com.au/product/shelly-multicolor-wi-fi-bulb-gen3-e27/
 
 ## Trades

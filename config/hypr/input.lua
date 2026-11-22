@@ -1,4 +1,4 @@
--- Keyboard and touchpad. The overrides from the Omarchy setup, carried over.
+-- Keyboard and touchpad. Overrides carried over from the previous setup.
 
 hl.config({
   input = {

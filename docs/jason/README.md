@@ -49,6 +49,9 @@ there are no drops pending.
 - [`complete/waybar-workspace-modes-2026-11-12.md`](complete/waybar-workspace-modes-2026-11-12.md)
   — why workspace state is colour, the 6-workspace cap, and why waybar must stay
   ≥ 0.16.0 (Hyprland's Lua dispatch).
+- [`complete/omarchy-final-sweep-2026-11-20.md`](complete/omarchy-final-sweep-2026-11-20.md)
+  — the user-side cleanup: dead `omarchy-*` launchers, theme imports and skill
+  symlinks; nothing Omarchy-named is left outside `/boot` and `docs/`.
 - [`complete/floating-window-handle-2026-11-12.md`](complete/floating-window-handle-2026-11-12.md)
   — the `hyprbars` plugin gives floating windows a grab bar (drag with no
   modifier, floating only, pinned to the running Hyprland version).

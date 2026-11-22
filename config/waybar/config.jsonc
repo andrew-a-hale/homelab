@@ -11,8 +11,8 @@
   "modules-center": ["clock"],
   "modules-right": ["network", "pulseaudio"],
 
-  // Show the workspaces that exist, not a fixed row. Omarchy's 10-per-monitor
-  // scheme (DP-1 owned 11-20) went with Omarchy; waybar's
+  // Show the workspaces that exist, not a fixed row. A fixed 10-per-monitor
+  // scheme (DP-1 owned 11-20) does not work here; waybar's
   // "persistent-workspaces" is not usable here — {"DP-2": 10} produced
   // workspaces 21-30, and {"*": 10} creates nothing (measured on 0.15.0). Windows that
   // were stranded on 11/14 have been moved back. Only 1-6 can be created:

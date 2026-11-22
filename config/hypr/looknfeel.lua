@@ -1,7 +1,6 @@
--- Look and feel. These are the values the desktop effectively ran with under
--- Omarchy (read back with `hyprctl getoption`), not Omarchy's theme system:
--- no rounding, no blur, a thin blue active border. Tune freely — nothing
--- depends on them.
+-- Look and feel. Read back from the old desktop with `hyprctl getoption`, not
+-- taken from a theme system: no rounding, no blur, a thin blue active border.
+-- Tune freely — nothing depends on them.
 
 hl.config({
   general = {

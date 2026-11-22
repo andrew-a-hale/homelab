@@ -1,4 +1,4 @@
--- Jason: plain Hyprland, no Omarchy. This is the entry point; Hyprland loads
+-- Jason: plain Hyprland, configured in Lua. This is the entry point; Hyprland loads
 -- ~/.config/hypr/hyprland.lua and everything else is required from here.
 -- Source of truth for what is in here: docs/jason/{binds,whitelist,needs}.md.
 
@@ -26,8 +26,8 @@ hl.env("NVD_BACKEND", "direct")
 hl.env("LIBVA_DRIVER_NAME", "nvidia")
 hl.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia")
 
--- fcitx5 (mozc). The environment.d file the Omarchy upgrade renamed to .bak is
--- gone, so the input-method variables live here now.
+-- fcitx5 (mozc). No environment.d file carries these, so the input-method
+-- variables live here.
 hl.env("QT_IM_MODULE", "fcitx")
 hl.env("XMODIFIERS", "@im=fcitx")
 hl.env("SDL_IM_MODULE", "fcitx")

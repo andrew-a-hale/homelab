@@ -5,7 +5,7 @@
 -- reliably. Executing them from this file runs before uwsm has exported
 -- `WAYLAND_DISPLAY` and `HYPRLAND_INSTANCE_SIGNATURE` into the activation
 -- environment, so every GUI client exits instantly on boot (this is what left
--- the first Omarchy-free boot with no bar). Enable them with:
+-- the first session without them booted with no bar). Enable them with:
 --   systemctl --user enable --now waybar hyprpaper hypridle
 --
 -- What is left below has no unit of its own and survives the missing Wayland
@@ -14,7 +14,7 @@
 -- Let portals, secrets and the keyring see the session environment.
 hl.exec_cmd("dbus-update-activation-environment --systemd --all")
 
--- Japanese input. fcitx5 ships no systemd user unit (Omarchy's went with it).
+-- Japanese input. fcitx5 ships no systemd user unit of its own.
 hl.exec_cmd("pgrep -x fcitx5 >/dev/null || fcitx5 -d --replace")
 
 -- USB sticks: automount, no tray icon (waybar has no tray module here).

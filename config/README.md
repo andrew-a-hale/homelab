@@ -14,7 +14,7 @@ Everything here is derived from `docs/jason/`:
 | `fuzzel/fuzzel.ini` | Omarchy's menu | `SUPER + SPACE` |
 | `hypr/scripts/` | `omarchy-*` helper scripts | capture, recording, power menu |
 | `shell/bashrc`, `shell/starship.toml` | `~/.bashrc`'s `source /usr/share/omarchy/default/bash/rc` | the prompt and history settings Omarchy's rc provided |
-| `limine/zz-jason.conf` | `/etc/limine-entry-tool.d/zz-jason.conf` | UKI settings `omarchy-settings` used to own; `zz-` so it is read last and wins — see [`../docs/jason/complete/boot-entries-off-omarchy-2026-11-11.md`](../docs/jason/complete/boot-entries-off-omarchy-2026-11-11.md) |
+| `limine/zz-jason.conf` | `/etc/limine-entry-tool.d/zz-jason.conf` | the boot's UKI settings (enabled, name `arch_linux.efi`, title `Arch`, boot order); `zz-` so it is read last and wins — see [`../docs/jason/README.md`](../docs/jason/README.md) |
 
 ## Deploy
 

@@ -34,6 +34,11 @@ command, not copied from a design.
 | Detection | fail2ban active, 3 jails (`sshd`, `nginx-http-auth`, `jellyfin`), loopback never banned; daily health log carries `auth/24h`, `bt-401`, `fail2ban`. **Bans only act on clients that reach Ralph directly** — tunnelled internet traffic arrives from `127.0.0.1`, so for Jellyfin it is detection, not prevention (no edge rule by decision) | `fail2ban-client status`, `scripts/homelab-health.sh` |
 | Tailnet | `RunSSH: false` on both hosts — tailnet SSH is sshd + keys (`publickey`), not identity. No `ssh` block exists at all, so identity can never bypass sshd; rules are ralph `22,80,8096`, tom `22,8081`, `192.168.1.0/24`. Node key expiry disabled on ralph/tom (headless, verified `KeyExpiry: None`), left on for devices with browsers | `tailscale debug prefs`, `ssh -vv tom`, `docs/vpn/tailnet-acl.hujson` |
 
+Last CVE sweep: **2026-11-21** (`complete/cve-review-2026-11-21.md`). nginx2shell
+(`CVE-2026-123007/123633`) needs HTTP/2 and Ralph's nginx has no h2 listener, so
+nothing was exploitable. **Do not enable HTTP/2 on Ralph until nginx ≥ 1.30.7** —
+Arch still ships 1.30.6.
+
 ## The one chain that matters
 
 ```

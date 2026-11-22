@@ -40,7 +40,7 @@ hl.bind("SUPER + W", hl.dsp.window.close())
 -- there is a force variant for windows that refuse.
 hl.bind("SUPER + SHIFT + W", hl.dsp.window.kill())
 
--- Pop the window out: float it and pin it to every workspace, like Omarchy's.
+-- Pop the window out: float it and pin it to every workspace.
 hl.bind("SUPER + O", function()
   hl.dispatch(hl.dsp.window.float({ action = "toggle" }))
   hl.dispatch(hl.dsp.window.pin({ action = "toggle" }))
