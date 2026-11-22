@@ -9,7 +9,7 @@ Jellyfin + qBittorrent on **Ralph**, the always-on server. Verified
 | Piece | Where | Notes |
 |---|---|---|
 | Jellyfin 12.4 | **Ralph**, `jellyfin.service` (Arch, `pacman -Q jellyfin-server`) | `BaseUrl=/jf`, binds `0.0.0.0:8096`, UI `http://ralph/jf` |
-| Library | **Ralph**, `/dev/sda1` → `/srv/media` | ext4, label `media`, 3.6T (61.8G used). `movies/`, `tv/`, `music/` (music is **not** a Jellyfin library) |
+| Library | **Ralph**, `/dev/sda1` → `/srv/media` | ext4, label `media`, 3.6T (326G used). `movies/`, `tv/`, `music/` (music is **not** a Jellyfin library) |
 | Library path in Jellyfin | `/mnt/storage/media/...` | `/mnt/storage/media` is a **symlink to `/srv/media`** — keep it, Jellyfin's config references that path |
 | Drive mount | `/etc/fstab`, `nofail,x-systemd.device-timeout=15` | plus `jellyfin.service.d/` with `RequiresMountsFor=/srv/media`, so an unplugged drive stops Jellyfin instead of serving empty libraries |
 | qBittorrent 5.3.0 | **Ralph**, `qbittorrent-nox@qbittorrent` | WebUI `127.0.0.1:8081`, `Session\Interface=proton0` |
@@ -91,10 +91,48 @@ the new paths within ~30 min (or `sudo systemctl restart jellyfin`). The show
 folder has to exist first, name and year from TMDB — the year is load-bearing
 here, it is what picks the 2005 Avatar over the 2024 one.
 
+Movies have no `SxxEyy`, so `nzb-tidy.sh` leaves them and they keep the junk
+folder name (`Star.Wars.4.A.New.Hope…vol-01.par2_ yEnc  40432 (1-1)/`). File
+them by hand as `movies/<Name (Year)>/<Name (Year)>.mkv`, `chown -R
+nzbget:jellyfin`, `chmod -R 775` — Jellyfin tolerates the junk but nothing else
+can read the library (`complete/star-wars-ep3-ep5-2026-11-22.md`).
+
+To rescan now instead of waiting for the watcher:
+
+```bash
+ssh ralph 'curl -s -o /dev/null -w "%{http_code}\n" -X POST \
+  http://127.0.0.1:8096/jf/Library/Refresh \
+  -H "Authorization: MediaBrowser Token=\"<ApiKeys.AccessToken from jellyfin.db>\""'  # 204
+```
+
+`X-Emby-Token:` and `?api_key=` both answer **401** on this build; only the
+`Authorization: MediaBrowser Token="…"` header works. A 302 → `../jf/web/`
+means the path lost its `/jf` prefix, not that the token is bad.
+
 ## TV
 
-Laptop → HDMI → browser → `http://ralph/jf` → play, until a Google TV Streamer
-or Shield arrives (`TODO.md`). The TV's own DLNA path is a dead end — see
+**Google TV Streamer** on the LAN at `192.168.1.11` (DHCP, model reported over
+mDNS as "Google TV Streamer"; it blocks ICMP, so `nmap -Pn` not `ping`).
+Install the Play Store **Jellyfin** app there and it finds the server itself:
+Jellyfin binds the client-discovery port `0.0.0.0:7359`, and ufw allows `7359/udp`
+plus `8096/tcp` from `192.168.1.0/24` (the UDP rule was missing until
+2026-11-22 — without it the app reports "unable to connect").
+
+Type the URL **with the base path**: `http://192.168.1.26:8096/jf`, or
+`https://jellyfin.andrewahale.com/jf`. `BaseUrl=/jf` makes the root a `302`
+rather than the API, so a bare host:port fails the app's reachability check. And
+the hostname `ralph` only resolves on Jason (tailnet MagicDNS) — the TV's DNS
+has no such record, so use the IP.
+
+Discovery, from any LAN box:
+
+```bash
+python3 -c 'import socket;s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);s.setsockopt(socket.SOL_SOCKET,socket.SO_BROADCAST,1);s.settimeout(3);s.sendto(b"who is JellyfinServer?",("192.168.1.255",7359));print(s.recvfrom(4096)[0].decode())'
+# {"Address":"http://192.168.1.26:8096/jf","Id":"644dc027…","Name":"ralph"}
+```
+
+The old laptop → HDMI workaround and the TV's own DLNA path are retired —
+[`complete/google-tv-streamer-2026-11-22.md`](complete/google-tv-streamer-2026-11-22.md),
 [`complete/dlna-rejected-2026-11-08.md`](complete/dlna-rejected-2026-11-08.md).
 
 ## Verify
@@ -106,6 +144,7 @@ curl -s -o /dev/null -w '%{http_code}\n' http://ralph/nzb/   # 401 unauth, 200 w
 ssh ralph 'findmnt -T /srv/media -o SOURCE,FSTYPE,SIZE,USED,AVAIL'   # /dev/sda1 ext4
 curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: jellyfin.andrewahale.com' http://127.0.0.1:8096/jf/web/
 curl -sI https://jellyfin.andrewahale.com/ | head -1                # 302 -> /jf/web/
+avahi-browse -rt _androidtvremote2._tcp | grep address            # 192.168.1.11 = the TV
 ssh ralph 'sudo journalctl -u qbittorrent-nox@qbittorrent -n 20 | grep -i interface'
 ```
 

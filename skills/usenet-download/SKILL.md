@@ -30,8 +30,11 @@ One script does the whole chain: `~/projects/homelab/scripts/nzb-dl.sh`
 | Play | Jellyfin `http://ralph/jf` | file-watching picks up new files, but `sudo systemctl restart jellyfin.service` is the certain way |
 
 Provider is XS News over TLS (no VPN, no peers — that is qBittorrent's problem).
-Measured ceiling: **~4 MB/s** (50 Mbit cap), so 23 GB ≈ 1h40. Say so, don't wait
-on it.
+NZBGet is throttled to **2 MB/s** — `DownloadRate=2000` in
+`/var/lib/nzbget/nzbget.conf` on ralph, so it survives a restart (line 1101; set it
+live too with `{"method":"rate","params":[2048000]}`). Provider cap is ~4 MB/s.
+Estimate at 2 MB/s — 23 GB ≈ 3h15 — say so, don't wait on it. Check the real number
+with `status` (`DownloadLimit` in the jsonrpc `status` call is bytes/s).
 
 ## Use it
 
@@ -123,7 +126,11 @@ provider is fine: a different show's job at 100%. See
 
 **Dupe check eats the job.** History shows `DELETED/COPY` — NZBGet matched an
 existing file. Retry with `--force` (`DupeMode=force`), or accept it as already
-present.
+present. But check the *older* entry's status first: a dupe of a post that
+previously ended `FAILURE/HEALTH` or `FAILURE/PAR` downloads nothing, and the
+`DELETED/COPY` reads like success. Star Wars III and V were both re-queued to
+nothing this way — pick a different post instead
+(`docs/media/complete/star-wars-ep3-ep5-2026-11-22.md`).
 
 **Provider hiccups look like failures.** `Blocking XS News for 10 sec` and
 `Could not write to TLS-Socket: … unexpected eof while reading` are transient;
