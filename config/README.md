@@ -59,8 +59,10 @@ hyprpm add https://github.com/hyprwm/hyprland-plugins v0.56.0   # pinned to 0.56
 hyprpm enable hyprbars && hyprpm reload
 ```
 
-Skipping it is not fatal: the `plugin:hyprbars` keys are ignored and floating
-windows simply have no grab bar ([why](../../docs/jason/complete/floating-window-handle-2026-11-12.md)).
+Skipping it is not fatal: `plugin_loaded("hyprbars")` is false, so the
+`plugin:hyprbars` keys and the `hyprbars:no_bar` rule are skipped rather than
+logged as errors, and floating windows simply have no grab bar
+([why](../../docs/jason/complete/floating-window-handle-2026-11-12.md)).
 
 ## Decisions worth knowing
 
@@ -69,7 +71,11 @@ windows simply have no grab bar ([why](../../docs/jason/complete/floating-window
 - **No notification daemon, no OSD, no tray**: deliberate. The scripts do not call
   `notify-send` for that reason.
 - **hyprbars is loaded by `hyprpm`, not Hyprland**: `hypr/autostart.lua` runs
-  `hyprpm reload -n` at startup, otherwise floating windows log in with no grab bar.
+  `hyprpm reload -n && hyprctl reload` on the `hyprland.start` event — a plain
+  exec runs while the config is parsed, before the socket exists, and fails —
+  and `hyprland.lua`'s `plugin_loaded()` keeps `looknfeel.lua`/`rules.lua` from
+  setting plugin keys the plugin cannot answer for
+  ([why](../../docs/jason/complete/hyprbars-startup-load-2026-11-24.md)).
 - **Theming** is static and hand-written. There is no theme switcher; change the
   colours in `hypr/looknfeel.lua`, `waybar/style.css` and `fuzzel/fuzzel.ini` if
   they ever need to change (`#7aa2f7` is the accent in all three).

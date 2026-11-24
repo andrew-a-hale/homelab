@@ -9,4 +9,6 @@ hl.window_rule({ match = { class = "([fF]irefox|zen|librewolf)" }, idle_inhibit 
 hl.window_rule({ match = { class = "steam", title = "(Friends List|Steam Chat)" }, float = true })
 
 -- hyprbars: only floating windows get a titlebar/handle (see looknfeel.lua).
-hl.window_rule({ name = "hyprbars-floating-only", match = { float = false }, ["hyprbars:no_bar"] = true })
+if plugin_loaded("hyprbars") then
+  hl.window_rule({ name = "hyprbars-floating-only", match = { float = false }, ["hyprbars:no_bar"] = true })
+end

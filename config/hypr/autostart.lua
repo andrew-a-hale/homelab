@@ -10,6 +10,10 @@
 --
 -- What is left below has no unit of its own and survives the missing Wayland
 -- variables: fcitx5 retries, udiskie does not need Wayland at all.
+--
+-- hyprbars is not here either: hyprpm needs the compositor socket, which does
+-- not exist yet while this file is parsed, so the load waits for the `start`
+-- event and then reloads the config so looknfeel.lua/rules.lua can see it.
 
 -- Let portals, secrets and the keyring see the session environment.
 hl.exec_cmd("dbus-update-activation-environment --systemd --all")
@@ -20,5 +24,9 @@ hl.exec_cmd("pgrep -x fcitx5 >/dev/null || fcitx5 -d --replace")
 -- USB sticks: automount, no tray icon (waybar has no tray module here).
 hl.exec_cmd("pgrep -x udiskie >/dev/null || udiskie --automount --no-notify --no-tray")
 
--- hyprpm plugins (hyprbars) are loaded by hyprpm, not by Hyprland itself.
-hl.exec_cmd("hyprpm reload -n")
+-- hyprpm plugins (hyprbars), once the compositor can answer: on the `start` event,
+-- not from a plain exec here — that runs while the config is parsed, before the
+-- socket exists, and has always failed with "Couldn't connect to ...sock".
+hl.on("hyprland.start", function()
+  hl.exec_cmd("hyprpm reload -n && hyprctl reload")
+end)

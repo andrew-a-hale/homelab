@@ -32,6 +32,15 @@ hl.env("QT_IM_MODULE", "fcitx")
 hl.env("XMODIFIERS", "@im=fcitx")
 hl.env("SDL_IM_MODULE", "fcitx")
 
+-- Is an hyprpm plugin in? Used by looknfeel.lua and rules.lua: their plugin
+-- config keys and plugin window rules are hard errors when it is not loaded.
+function plugin_loaded(name)
+  for _, plugin in ipairs(hl.get_loaded_plugins()) do
+    if plugin.name == name then return true end
+  end
+  return false
+end
+
 require("monitors")
 require("input")
 require("looknfeel")
